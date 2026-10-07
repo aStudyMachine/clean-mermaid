@@ -1,5 +1,5 @@
 import mermaid from "mermaid";
-import { SYSTEM_FONT_STACK, type ThemeDefinition } from "./themes";
+import { SYSTEM_FONT_STACK, themeIdentity, type ThemeDefinition } from "./themes";
 import type { ElkMergeEdges, ElkNodePlacement, LayoutEngine } from "./settings";
 
 export interface RenderRequest {
@@ -147,8 +147,10 @@ const cache = new Map<string, RenderedDiagram>();
 const CACHE_LIMIT = 100;
 
 function cacheKey(request: RenderRequest): string {
+	// Plain mode bakes the document appearance into the SVG (see buildInitConfig), so the
+	// appearance belongs in the key — otherwise a light/dark switch replays the other look.
 	return [
-		request.plain ? "plain" : request.theme?.id ?? "none",
+		request.plain ? `plain:${isDarkDocument() ? "dark" : "light"}` : themeIdentity(request.theme),
 		request.layout,
 		request.elkMergeEdges,
 		request.elkNodePlacement,

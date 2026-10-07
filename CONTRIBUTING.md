@@ -50,6 +50,9 @@ hot-reloaded.
 - Every user-facing string goes through `plugin.t(english, chinese)` (`src/i18n.ts`) — no hard-coded
   labels in the card toolbar, menus, error card, viewer or notices.
 - Pure logic belongs in `fit.ts` / `themes.ts` style modules so it stays testable.
+- The render cache key and the card signature must cover **every** input that changes the SVG —
+  theme *content* (`themeIdentity`, not the theme id), layout, ELK options, the diagram source, and
+  the appearance in plain mode. A narrower key silently replays a stale diagram.
 - Do not patch globals (no `window.mermaid` swapping, no global `mermaid.initialize` side effects);
   per-diagram configuration is injected as a directive instead.
 - No local machine paths, vault names or personal data in any committed file.
@@ -73,7 +76,8 @@ Run this in a vault with `main.js`, `manifest.json` and `styles.css` deployed, t
 2. Live preview: editing a block re-renders it correctly.
 3. ELK is active: a complex flowchart differs from `%% cm:layout=dagre %%`; the ELK settings
    (`mergeEdges`, `nodePlacementStrategy`) change the output.
-4. Switching the Obsidian appearance re-renders diagrams with the matching theme.
+4. Switching the Obsidian appearance re-renders diagrams with the matching theme — including
+   `%% cm:plain %%` diagrams and ones under a fixed (non-following) theme.
 5. Resizing the pane re-fits the diagram and keeps it centred; a very narrow pane does not overflow.
 6. `Ctrl/Cmd + scroll` zooms around the pointer; plain scroll still scrolls the note; drag pans;
    double-click resets.

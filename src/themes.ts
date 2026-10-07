@@ -252,6 +252,18 @@ export function resolveActiveTheme(
 	return fallback ?? (isDark ? CLEAN_DARK : CLEAN_LIGHT);
 }
 
+/**
+ * Identity of what a theme actually paints with, so editing an existing custom theme is
+ * distinguishable from switching between themes. `dark` is part of it because the card and PNG
+ * background fall back to it when the theme has no `background` variable.
+ */
+export function themeIdentity(theme: ThemeDefinition | null): string {
+	if (!theme) {
+		return "none";
+	}
+	return `${theme.id}|${theme.dark ? "dark" : "light"}|${JSON.stringify(theme.variables)}`;
+}
+
 /** Background colour of the diagram card — also used as the PNG export background. */
 export function themeCanvasColor(theme: ThemeDefinition | null): string {
 	const background = theme?.variables["background"];

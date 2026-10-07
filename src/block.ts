@@ -2,7 +2,7 @@ import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, setIcon } fr
 import type CleanMermaidPlugin from "./main";
 import { clamp, computeFit, MAX_SCALE, MIN_SCALE } from "./fit";
 import { renderDiagram, svgToDataUrl, type RenderedDiagram } from "./mermaid-runtime";
-import { resolveActiveTheme, themeCanvasColor, type ThemeDefinition } from "./themes";
+import { resolveActiveTheme, themeCanvasColor, themeIdentity, type ThemeDefinition } from "./themes";
 import {
 	copyDiagramPng,
 	copyDiagramSource,
@@ -129,7 +129,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		const layout: LayoutEngine = plain ? "dagre" : directives.layout ?? settings.layoutEngine;
 
 		const signature = [
-			plain ? "plain" : theme?.id ?? "none",
+			plain ? "plain" : themeIdentity(theme),
 			layout,
 			settings.elkMergeEdges,
 			settings.elkNodePlacement,
