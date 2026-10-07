@@ -1,0 +1,37 @@
+# AGENTS.md — clean-mermaid 开发约定
+
+Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为 Codex 风格卡片（自带 mermaid 12、
+ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG 导出、主题与单图指令）。
+
+文档地图（改动前先读对应那份，避免重复劳动）：
+[README.md](README.md) / [README.zh-CN.md](README.zh-CN.md) 特性与用法 ·
+[CONTRIBUTING.md](CONTRIBUTING.md) 环境、目录结构、实现约定、手动验收清单 ·
+[docs/obsidian-internals.md](docs/obsidian-internals.md) 动渲染 / 主题 / 接管前必读的逆向结论 ·
+[TODO.md](TODO.md) 当前待办（完成即删）
+
+## 动手前必知的事实
+
+- **实时预览里 mermaid 由官方便编码渲染**：代码块部件在任何注册表查询之前就按 `lang === "mermaid"`
+  直接调官方渲染器 —— 用处理器 API 在编辑视图**不可能**接管，只能像 `src/livepreview.ts` 那样
+  事后替换已渲染部件（隐藏官方输出而非删除，以兼容官方 recycler）。
+- **阅读视图**：官方 mermaid 是普通后处理器；我们在 `main.ts` 用
+  `registerMarkdownCodeBlockProcessor("mermaid", …, -100)` 排在它之前接管。
+- **重复注册会抛异常**："同一语言已有代码块处理器"时会抛 `already registered`，`main.ts` 里那段
+  try/catch 是必要的兜底，保留它。
+- **自带运行时**：插件用自己打包的 mermaid，全局 `mermaid.initialize` 只在首次渲染前调用一次；
+  按图配置全部通过注入 `%%{init: …}%%` 指令实现。多条 init 指令深合并、**后出现者覆盖先出现者**。
+- 更细的逆向结论与 mermaid 12 配置语义：见 [docs/obsidian-internals.md](docs/obsidian-internals.md)。
+
+## 护栏
+
+- 仓库保持无本机路径、无 vault 名、无个人信息；部署脚本只从 `VAULT` 环境变量或命令行参数取路径。
+- 双语文档保持同步：`README.md` ↔ `README.zh-CN.md`、`CONTRIBUTING.md` ↔ `CONTRIBUTING.zh-CN.md`。
+- 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
+- CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
+- mermaid 版本已固定，升级版本需先在本地验证渲染行为再提交（四套主题着色、ELK/Dagre 差异、指令合并优先级）。
+
+## 常用命令
+
+- `npm run build`：类型检查 + 生产构建
+- `VAULT=<vault 路径> npm run deploy`：把构建产物部署进 vault 测试，之后需在 Obsidian 里重载插件
+  （不会热更新）
