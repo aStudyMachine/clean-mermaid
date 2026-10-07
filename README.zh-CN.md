@@ -24,6 +24,8 @@
 - **4 个内置主题** —— Clean Light、Clean Dark、Neutral、GitHub Light；另支持以标准 Mermaid
   `themeVariables` JSON 编写的**自定义主题**，并带校验。
 - **明暗自适应** —— 跟随 Obsidian 外观自动切换，并在切换时即时重绘。
+- **界面语言** —— 卡片工具条、`⋯` 菜单、错误卡片、全屏查看器与提示等全部文案跟随中文 / English，
+  选「自动」时跟随 Obsidian 的界面语言。
 - **单图指令** —— `%% cm:theme=... %%`、`%% cm:layout=dagre %%`、`%% cm:plain %%`。
 
 ## 安装
@@ -91,7 +93,7 @@ flowchart LR
 
 | 分组 | 选项 |
 | --- | --- |
-| 通用 | 设置面板界面语言：自动跟随 Obsidian、中文或 English |
+| 通用 | 插件界面语言（卡片工具条、`⋯` 菜单、错误卡片、全屏查看器与提示）：自动跟随 Obsidian、中文或 English |
 | 外观 | 浅色/深色主题、跟随 Obsidian 明暗、固定主题 |
 | 布局 | 布局引擎（ELK/Dagre）、ELK `mergeEdges`、ELK `nodePlacementStrategy`、自适应方式、最大放大倍率、最大高度 |
 | 交互 | Ctrl/Cmd + 滚轮缩放、拖拽平移、工具条显示方式、双击复位 |
@@ -126,6 +128,7 @@ src/
   fit.ts              纯函数自适应计算
   viewer.ts           全屏缩放/平移弹窗
   export.ts           PNG/SVG/剪贴板/移动端保存
+  i18n.ts             语言检测与中英取词，供全部界面文案使用
   settings.ts         设置模型与设置面板
 ```
 

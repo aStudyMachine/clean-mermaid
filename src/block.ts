@@ -135,6 +135,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			settings.elkNodePlacement,
 			settings.imageify ? "img" : "svg",
 			isDark ? "dark" : "light",
+			this.plugin.language,
 		].join("|");
 
 		if (!force && this.rendered && signature === this.signature) {
@@ -224,17 +225,20 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	}
 
 	private buildToolbar(stage: HTMLElement): void {
+		const plugin = this.plugin;
 		const toolbar = stage.createDiv({ cls: "cm-toolbar" });
 
+		const moreLabel = plugin.t("More actions", "更多操作");
 		const menuButton = toolbar.createEl("button", {
 			cls: "cm-btn",
-			attr: { "aria-label": "More actions", title: "More actions" },
+			attr: { "aria-label": moreLabel, title: moreLabel },
 		});
 		setIcon(menuButton, "more-horizontal");
 
+		const fullscreenLabel = plugin.t("Open in fullscreen", "全屏打开");
 		const expandButton = toolbar.createEl("button", {
 			cls: "cm-btn",
-			attr: { "aria-label": "Open in fullscreen", title: "Open in fullscreen" },
+			attr: { "aria-label": fullscreenLabel, title: fullscreenLabel },
 		});
 		setIcon(expandButton, "maximize-2");
 
@@ -250,11 +254,11 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 				void action();
 			});
 		};
-		addItem("image", "Download PNG", () => this.exportPng());
-		addItem("download", "Download SVG", () => this.exportSvg());
-		addItem("copy", "Copy image", () => this.copyImage());
-		addItem("code", "Copy source", () => this.copySource());
-		addItem("rotate-ccw", "Reset zoom", () => this.resetZoom());
+		addItem("image", plugin.t("Download PNG", "下载 PNG"), () => this.exportPng());
+		addItem("download", plugin.t("Download SVG", "下载 SVG"), () => this.exportSvg());
+		addItem("copy", plugin.t("Copy image", "复制图片"), () => this.copyImage());
+		addItem("code", plugin.t("Copy source", "复制源码"), () => this.copySource());
+		addItem("rotate-ccw", plugin.t("Reset zoom", "复位缩放"), () => this.resetZoom());
 
 		this.registerDomEvent(menuButton, "click", (event) => {
 			event.stopPropagation();
@@ -266,7 +270,10 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		});
 		this.registerDomEvent(document, "click", () => this.hideMenu());
 
-		const badge = stage.createDiv({ cls: "cm-zoom-badge cm-hidden", attr: { title: "Reset zoom" } });
+		const badge = stage.createDiv({
+			cls: "cm-zoom-badge cm-hidden",
+			attr: { title: plugin.t("Reset zoom", "复位缩放") },
+		});
 		this.registerDomEvent(badge, "click", (event) => {
 			event.stopPropagation();
 			this.resetZoom();
@@ -533,7 +540,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!bundle) {
 			return;
 		}
-		await exportDiagramPng(this.plugin.app, bundle, this.plugin.settings.pngScale);
+		await exportDiagramPng(this.plugin.app, bundle, this.plugin.settings.pngScale, this.plugin.language);
 	}
 
 	private async exportSvg(): Promise<void> {
@@ -541,7 +548,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!bundle) {
 			return;
 		}
-		await exportDiagramSvg(this.plugin.app, bundle);
+		await exportDiagramSvg(this.plugin.app, bundle, this.plugin.language);
 	}
 
 	private async copyImage(): Promise<void> {
@@ -549,7 +556,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!bundle) {
 			return;
 		}
-		await copyDiagramPng(this.plugin.app, bundle, this.plugin.settings.pngScale);
+		await copyDiagramPng(this.plugin.app, bundle, this.plugin.settings.pngScale, this.plugin.language);
 	}
 
 	private async copySource(): Promise<void> {
@@ -557,7 +564,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!bundle) {
 			return;
 		}
-		await copyDiagramSource(bundle);
+		await copyDiagramSource(bundle, this.plugin.language);
 	}
 
 	private showError(error: unknown, code: string): void {
@@ -569,19 +576,30 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 
 		const wrap = this.containerEl.createDiv({ cls: "cm-block" });
 		const card = wrap.createDiv({ cls: "cm-card cm-error" });
-		card.createDiv({ cls: "cm-error-title", text: "Mermaid render failed" });
+		card.createDiv({
+			cls: "cm-error-title",
+			text: this.plugin.t("Mermaid render failed", "Mermaid 渲染失败"),
+		});
 		card.createDiv({ cls: "cm-error-message", text: message });
 		card.createDiv({
 			cls: "cm-error-hint",
-			text: "Tip: add %% cm:layout=dagre %% at the top of the block to fall back to the classic layout engine.",
+			text: this.plugin.t(
+				"Tip: add %% cm:layout=dagre %% at the top of the block to fall back to the classic layout engine.",
+				"提示：在代码块开头加上 %% cm:layout=dagre %% 可回退到经典布局引擎。",
+			),
 		});
 		const details = card.createEl("details", { cls: "cm-error-details" });
-		details.createEl("summary", { text: "Show source" });
+		details.createEl("summary", { text: this.plugin.t("Show source", "查看源码") });
 		details.createEl("pre", { text: code });
 
 		if (!this.plugin.warnedAboutRenderFailure) {
 			this.plugin.warnedAboutRenderFailure = true;
-			new Notice("Clean Mermaid: a diagram failed to render — see the block for details.");
+			new Notice(
+				this.plugin.t(
+					"Clean Mermaid: a diagram failed to render — see the block for details.",
+					"Clean Mermaid：有图表渲染失败，详见该图表。",
+				),
+			);
 		}
 	}
 }

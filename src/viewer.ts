@@ -43,7 +43,7 @@ export class DiagramViewerModal extends Modal {
 		this.modalEl.addClass("cm-modal");
 		this.contentEl.empty();
 		this.contentEl.addClass("cm-modal-content");
-		this.titleEl.setText("Mermaid diagram");
+		this.titleEl.setText(this.plugin.t("Mermaid diagram", "Mermaid 图表"));
 
 		this.buildToolbar();
 
@@ -96,12 +96,12 @@ export class DiagramViewerModal extends Modal {
 			return button;
 		};
 
-		addButton("minus", "Zoom out", () => this.zoomBy(1 / 1.25));
+		addButton("minus", this.plugin.t("Zoom out", "缩小"), () => this.zoomBy(1 / 1.25));
 
 		this.zoomLabelEl = toolbar.createSpan({ cls: "cm-modal-zoom-label", text: "100%" });
 
-		addButton("plus", "Zoom in", () => this.zoomBy(1.25));
-		addButton("maximize", "Fit to view", () => this.fit());
+		addButton("plus", this.plugin.t("Zoom in", "放大"), () => this.zoomBy(1.25));
+		addButton("maximize", this.plugin.t("Fit to view", "适应窗口"), () => this.fit());
 
 		const reset = toolbar.createEl("button", { cls: "cm-btn cm-btn-text", text: "100%" });
 		reset.addEventListener("click", () => this.zoomTo(1));
@@ -109,9 +109,14 @@ export class DiagramViewerModal extends Modal {
 		const spacer = toolbar.createDiv({ cls: "cm-toolbar-spacer" });
 		spacer.setAttribute("aria-hidden", "true");
 
-		addButton("download", "Download PNG", () => void exportDiagramPng(this.app, this.bundle(), this.plugin.settings.pngScale));
-		addButton("file-code", "Download SVG", () => void exportDiagramSvg(this.app, this.bundle()));
-		addButton("x", "Close", () => this.close());
+		const language = this.plugin.language;
+		addButton("download", this.plugin.t("Download PNG", "下载 PNG"), () =>
+			void exportDiagramPng(this.app, this.bundle(), this.plugin.settings.pngScale, language),
+		);
+		addButton("file-code", this.plugin.t("Download SVG", "下载 SVG"), () =>
+			void exportDiagramSvg(this.app, this.bundle(), language),
+		);
+		addButton("x", this.plugin.t("Close", "关闭"), () => this.close());
 	}
 
 	private bindInteractions(): void {

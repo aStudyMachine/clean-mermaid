@@ -26,6 +26,8 @@ view, PNG/SVG export and themable colours.
 - **4 built-in themes** — Clean Light, Clean Dark, Neutral, GitHub Light — plus **custom themes**
   as plain Mermaid `themeVariables` JSON, with validation.
 - **Light/dark aware** — follows the Obsidian appearance automatically and re-renders on switch.
+- **UI language** — the card toolbar, the `⋯` menu, the error card, the fullscreen viewer and every
+  notice follow 中文 / English, or Obsidian's own interface language when set to "Auto".
 - **Per-diagram directives** — `%% cm:theme=... %%`, `%% cm:layout=dagre %%`, `%% cm:plain %%`.
 
 ## Installation
@@ -93,7 +95,7 @@ prepends its configuration, so the values you write later take precedence.
 
 | Group | Options |
 | --- | --- |
-| General | Interface language of the settings tab: follow Obsidian automatically, 中文 or English |
+| General | Plugin interface language (card toolbar, `⋯` menu, error card, viewer, notices): follow Obsidian automatically, 中文 or English |
 | Appearance | Light/dark theme, follow Obsidian appearance, fixed theme |
 | Layout | Layout engine (ELK/Dagre), ELK `mergeEdges`, ELK `nodePlacementStrategy`, auto-fit mode, max upscale, max height |
 | Interaction | Ctrl/Cmd + scroll zoom, drag to pan, toolbar visibility, double-click reset |
@@ -131,6 +133,7 @@ src/
   fit.ts              pure auto-fit math
   viewer.ts           fullscreen pan/zoom modal
   export.ts           PNG/SVG/clipboard/mobile-save helpers
+  i18n.ts             language detection + the bilingual picker used by every label
   settings.ts         settings model + settings tab
 ```
 

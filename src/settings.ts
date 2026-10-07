@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type CleanMermaidPlugin from "./main";
+import { pick, type Language, type LanguageSetting } from "./i18n";
 import {
 	BUILTIN_THEMES,
 	allThemes,
@@ -20,9 +21,6 @@ export type ElkNodePlacement =
 export type PngScale = 1 | 2 | 3;
 export type PngBackground = "theme" | "transparent";
 export type ToolbarMode = "hover" | "always";
-/** `auto` follows Obsidian's own interface language. */
-export type LanguageSetting = "auto" | "zh" | "en";
-export type Language = "zh" | "en";
 
 export interface CustomTheme {
 	id: string;
@@ -32,7 +30,7 @@ export interface CustomTheme {
 }
 
 export interface CleanMermaidSettings {
-	/** Language used by this plugin's settings tab. */
+	/** Language used by every string this plugin draws. */
 	language: LanguageSetting;
 	/** Theme used while Obsidian is in light appearance. */
 	lightThemeId: string;
@@ -122,31 +120,6 @@ export function migrateSettings(settings: CleanMermaidSettings): boolean {
 	return changed;
 }
 
-/** Obsidian keeps its interface language in local storage (e.g. "zh", "zh-TW", "en"). */
-export function detectObsidianLanguage(): Language {
-	try {
-		const stored = window.localStorage.getItem("language");
-		if (stored) {
-			return stored.toLowerCase().startsWith("zh") ? "zh" : "en";
-		}
-	} catch {
-		// Local storage unavailable — fall through to the browser language.
-	}
-	return navigator.language?.toLowerCase().startsWith("zh") ? "zh" : "en";
-}
-
-export function resolveLanguage(setting: LanguageSetting): Language {
-	if (setting === "zh" || setting === "en") {
-		return setting;
-	}
-	return detectObsidianLanguage();
-}
-
-/** Picks the string for the active language. */
-function pick(language: Language, english: string, chinese: string): string {
-	return language === "zh" ? chinese : english;
-}
-
 export class CleanMermaidSettingTab extends PluginSettingTab {
 	private readonly plugin: CleanMermaidPlugin;
 
@@ -156,7 +129,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 	}
 
 	private get language(): Language {
-		return resolveLanguage(this.plugin.settings.language);
+		return this.plugin.language;
 	}
 
 	display(): void {
@@ -191,8 +164,8 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 			.setDesc(
 				pick(
 					language,
-					"Language used by this plugin's settings tab. “Auto” follows Obsidian's interface language.",
-					"本插件设置面板使用的语言；“自动”跟随 Obsidian 的界面语言。",
+					"Language used by every string this plugin draws — card toolbar, menus and notices. “Auto” follows Obsidian's interface language.",
+					"本插件所有界面文案使用的语言，包括卡片工具条、菜单与提示；“自动”跟随 Obsidian 的界面语言。",
 				),
 			)
 			.addDropdown((dropdown) =>
@@ -204,8 +177,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 					})
 					.setValue(this.plugin.settings.language)
 					.onChange(async (value) => {
-						this.plugin.settings.language = value as LanguageSetting;
-						await this.plugin.saveSettings();
+						await this.plugin.updateSettings({ language: value as LanguageSetting });
 						this.display();
 					}),
 			);

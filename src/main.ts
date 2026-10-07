@@ -1,5 +1,6 @@
 import { MarkdownPostProcessorContext, Notice, Plugin } from "obsidian";
 import { CleanMermaidBlock } from "./block";
+import { pick, resolveLanguage, type Language } from "./i18n";
 import { createLivePreviewExtension } from "./livepreview";
 import { CleanMermaidSettingTab, DEFAULT_SETTINGS, migrateSettings, type CleanMermaidSettings } from "./settings";
 
@@ -13,6 +14,7 @@ export default class CleanMermaidPlugin extends Plugin {
 	warnedAboutRenderingConflict = false;
 
 	private readonly blocks = new Set<CleanMermaidBlock>();
+	private commandsRegistered = false;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -40,11 +42,7 @@ export default class CleanMermaidPlugin extends Plugin {
 
 		this.addSettingTab(new CleanMermaidSettingTab(this.app, this));
 
-		this.addCommand({
-			id: "redraw-diagrams",
-			name: "Redraw all diagrams in the current view",
-			callback: () => this.redrawAll(),
-		});
+		this.registerCommands();
 
 		// Appearance switches (light/dark, theme changes) need a re-render because the
 		// theme variables are baked into the SVG.
@@ -53,6 +51,19 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	onunload(): void {
 		this.blocks.clear();
+	}
+
+	/** Command palette entries are labelled once at registration, so re-register them on a language switch. */
+	private registerCommands(): void {
+		if (this.commandsRegistered) {
+			this.removeCommand("redraw-diagrams");
+		}
+		this.commandsRegistered = true;
+		this.addCommand({
+			id: "redraw-diagrams",
+			name: this.t("Redraw all diagrams in the current view", "重新绘制当前视图中的所有图表"),
+			callback: () => this.redrawAll(),
+		});
 	}
 
 	registerBlock(block: CleanMermaidBlock): void {
@@ -65,6 +76,16 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	isDark(): boolean {
 		return document.body.classList.contains("theme-dark");
+	}
+
+	/** The interface language this plugin renders in. */
+	get language(): Language {
+		return resolveLanguage(this.settings.language);
+	}
+
+	/** User-facing string for the active language. */
+	t(english: string, chinese: string): string {
+		return pick(this.language, english, chinese);
 	}
 
 	async loadSettings(): Promise<void> {
@@ -83,6 +104,9 @@ export default class CleanMermaidPlugin extends Plugin {
 	async updateSettings(patch: Partial<CleanMermaidSettings>): Promise<void> {
 		Object.assign(this.settings, patch);
 		await this.saveSettings();
+		if ("language" in patch) {
+			this.registerCommands();
+		}
 		this.refreshAll();
 	}
 
@@ -98,7 +122,7 @@ export default class CleanMermaidPlugin extends Plugin {
 		for (const block of this.blocks) {
 			void block.refresh(true);
 		}
-		new Notice("Clean Mermaid: diagrams redrawn");
+		new Notice(this.t("Clean Mermaid: diagrams redrawn", "Clean Mermaid：图表已重绘"));
 	}
 
 	warnAboutConflict(): void {
@@ -108,7 +132,10 @@ export default class CleanMermaidPlugin extends Plugin {
 		this.warnedAboutRenderingConflict = true;
 		console.warn("[clean-mermaid] An existing mermaid container was found in the block — another plugin may render mermaid too.");
 		new Notice(
-			"Clean Mermaid: another plugin appears to render mermaid blocks as well. Enable only one of them for predictable results.",
+			this.t(
+				"Clean Mermaid: another plugin appears to render mermaid blocks as well. Enable only one of them for predictable results.",
+				"Clean Mermaid：检测到其它插件也在渲染 mermaid 代码块，只启用其中一个才能保证效果一致。",
+			),
 		);
 	}
 }

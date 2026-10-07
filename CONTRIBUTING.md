@@ -40,12 +40,15 @@ hot-reloaded.
 | `src/fit.ts` | Pure auto-fit math (easy to unit test — no Obsidian dependency) |
 | `src/viewer.ts` | Fullscreen modal viewer (zoom, pan, pinch, fit, export) |
 | `src/export.ts` | PNG rasterisation, SVG output, clipboard, mobile "save into vault" fallback |
+| `src/i18n.ts` | Language detection (`auto` follows Obsidian) and the bilingual picker behind every label the plugin draws |
 | `src/settings.ts` | Settings model + settings tab (custom theme JSON editor, UI language option) |
 | `styles.css` | All styles, namespaced with the `cm-` prefix; light/dark via `body.theme-dark` |
 
 ## Guidelines
 
 - Keep the plugin namespace on every CSS class (`cm-`) and on every directive (`%% cm:... %%`).
+- Every user-facing string goes through `plugin.t(english, chinese)` (`src/i18n.ts`) — no hard-coded
+  labels in the card toolbar, menus, error card, viewer or notices.
 - Pure logic belongs in `fit.ts` / `themes.ts` style modules so it stays testable.
 - Do not patch globals (no `window.mermaid` swapping, no global `mermaid.initialize` side effects);
   per-diagram configuration is injected as a directive instead.
@@ -84,7 +87,10 @@ Run this in a vault with `main.js`, `manifest.json` and `styles.css` deployed, t
 11. A syntax error shows the error card (with the Dagre hint) and does not break the rest of the note.
 12. Disabling the plugin restores Obsidian's own Mermaid rendering with no leftover DOM or
     console errors.
-13. `git status` and a text search confirm no vault paths, tokens or personal data are staged.
+13. Language setting: switching it re-labels the card toolbar, the `⋯` menu, the error card, the
+    fullscreen viewer and every notice right away, and the command palette entry follows too —
+    no plugin reload needed.
+14. `git status` and a text search confirm no vault paths, tokens or personal data are staged.
 
 ## Reporting issues
 

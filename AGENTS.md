@@ -28,6 +28,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 - 双语文档保持同步：`README.md` ↔ `README.zh-CN.md`、`CONTRIBUTING.md` ↔ `CONTRIBUTING.zh-CN.md`。
 - 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
 - CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
+- 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
 - mermaid 版本已固定，升级版本需先在本地验证渲染行为再提交（四套主题着色、ELK/Dagre 差异、指令合并优先级）。
 
 ## 常用命令
