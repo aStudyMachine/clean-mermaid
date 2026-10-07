@@ -1,0 +1,86 @@
+name: Bug report / 问题反馈
+description: Something renders wrong, crashes or behaves unexpectedly / 渲染异常、崩溃或行为不符合预期
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Please avoid pasting private notes or personal vault paths.
+        感谢反馈！请勿粘贴私人笔记内容或本机 vault 路径。
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Clean Mermaid version / 插件版本
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: obsidian-version
+    attributes:
+      label: Obsidian version / Obsidian 版本
+      placeholder: "1.14.4"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / 平台
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - iOS
+        - Android
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      placeholder: |
+        1. Create a ```mermaid block with ...
+        2. Switch to reading view
+        3. ...
+
+        1. 新建一个包含 ... 的 ```mermaid 代码块
+        2. 切换到阅读视图
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour / 期望行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour / 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: diagram
+    attributes:
+      label: Mermaid source (minimal reproduction) / Mermaid 源码（最小复现）
+      description: A minimal, non-confidential diagram that triggers the problem. / 能触发该问题的最小图表，且不含机密内容。
+      render: mermaid
+    validations:
+      required: false
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output / 控制台输出
+      description: Errors from the developer console (Ctrl/Cmd+Shift+I), if any. / 开发者控制台（Ctrl/Cmd+Shift+I）中的报错，如有。
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks / 自检
+      options:
+        - label: I am not running another plugin that also takes over ```mermaid blocks. / 我没有同时启用其它接管 mermaid 代码块的插件。
+          required: true
+        - label: I reproduced this with the default settings. / 我用默认设置复现了该问题。
+          required: false

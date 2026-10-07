@@ -1,0 +1,31 @@
+name: Feature request / 功能建议
+description: Suggest an improvement or a new capability / 提出改进或新能力
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve? / 你想解决什么问题？
+      description: Describe the use case rather than a specific implementation. / 描述使用场景即可，不必给出具体实现方案。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / 建议方案
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered / 考虑过的替代方案
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check / 范围自检
+      description: The project deliberately keeps scope small — see "Notes & compatibility" in the README. / 项目刻意保持小范围 —— 参见 README 的「说明与兼容性」一节。
+      options:
+        - label: This request is about rendering, theming, viewing or exporting Mermaid diagrams. / 该建议与 Mermaid 图表的渲染、主题、查看或导出相关。
+          required: true

@@ -1,0 +1,30 @@
+{
+  "name": "clean-mermaid",
+  "version": "0.1.0",
+  "description": "Codex-style Mermaid rendering for Obsidian — ELK layout, auto-fit & center, zoom/pan, image preview, PNG/SVG export, built-in and custom themes.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "deploy": "node scripts/deploy.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "mermaid",
+    "elk",
+    "diagram",
+    "flowchart"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "mermaid": "12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.13.1",
+    "typescript": "^5.7.2"
+  }
+}

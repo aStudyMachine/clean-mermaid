@@ -1,0 +1,319 @@
+/* Clean Mermaid — Codex-style diagram cards.
+   All selectors are namespaced with the `cm-` prefix. */
+
+/* ---------------------------------------------------------------- host block */
+
+.cm-host {
+	padding: 0;
+	background: transparent;
+}
+
+.cm-block {
+	margin: 12px 0;
+}
+
+/* ------------------------------------------------------------------- card */
+
+.cm-card {
+	position: relative;
+	background: var(--cm-canvas-bg, var(--background-primary));
+	border: 1px solid rgba(0, 0, 0, 0.06);
+	border-radius: 10px;
+	padding: 16px;
+}
+
+body.theme-dark .cm-card {
+	border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ------------------------------------------------------------------ canvas */
+
+.cm-canvas {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	overflow: hidden;
+	border-radius: 6px;
+	touch-action: pan-y;
+}
+
+.cm-media {
+	display: block;
+	flex: 0 0 auto;
+	max-width: none !important;
+	max-height: none !important;
+	transform-origin: center center;
+	user-select: none;
+	-webkit-user-drag: none;
+}
+
+.cm-canvas.cm-grabbing,
+.cm-canvas.cm-grabbing .cm-media {
+	cursor: grabbing;
+}
+
+/* ----------------------------------------------------------------- toolbar */
+
+.cm-toolbar {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	z-index: 2;
+	display: flex;
+	gap: 2px;
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+.cm-card:hover .cm-toolbar,
+.cm-card.cm-toolbar-always .cm-toolbar {
+	opacity: 1;
+}
+
+.cm-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	box-shadow: none;
+}
+
+.cm-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.cm-btn svg {
+	width: 15px;
+	height: 15px;
+}
+
+.cm-btn-text {
+	width: auto;
+	padding: 0 8px;
+	font-size: var(--font-ui-smaller);
+}
+
+/* -------------------------------------------------------------------- menu */
+
+.cm-menu {
+	position: absolute;
+	top: 34px;
+	right: 6px;
+	z-index: 3;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 180px;
+	padding: 4px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: var(--shadow-s);
+}
+
+.cm-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border: none;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	text-align: left;
+	cursor: pointer;
+	box-shadow: none;
+}
+
+.cm-menu-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.cm-menu-icon {
+	display: flex;
+	color: var(--text-muted);
+}
+
+.cm-menu-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* --------------------------------------------------------------- zoom badge */
+
+.cm-zoom-badge {
+	position: absolute;
+	right: 8px;
+	bottom: 8px;
+	z-index: 2;
+	padding: 2px 6px;
+	border-radius: 5px;
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.4;
+	cursor: pointer;
+}
+
+.cm-hidden {
+	display: none !important;
+}
+
+/* Live preview: Obsidian's own rendered output, hidden in favour of our card. */
+.cm-core-hidden {
+	display: none !important;
+}
+
+/* ------------------------------------------------------------- plain / error */
+
+.cm-plain {
+	display: flex;
+	justify-content: center;
+}
+
+.cm-media-plain {
+	max-width: 100%;
+	height: auto;
+}
+
+.cm-error-title {
+	margin-bottom: 4px;
+	color: var(--text-error);
+	font-weight: 600;
+}
+
+.cm-error-message {
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	white-space: pre-wrap;
+}
+
+.cm-error-hint {
+	margin-top: 6px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.cm-error-details {
+	margin-top: 8px;
+}
+
+.cm-error-details pre {
+	overflow: auto;
+	font-size: var(--font-ui-smaller);
+}
+
+/* ------------------------------------------------------------------- modal */
+
+.modal.cm-modal {
+	width: min(1100px, 92vw);
+	max-width: 92vw;
+	height: min(820px, 88vh);
+}
+
+.modal.cm-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.cm-modal-content {
+	gap: 8px;
+	min-height: 0;
+}
+
+.cm-modal-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.cm-modal-zoom-label {
+	min-width: 46px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	text-align: center;
+}
+
+.cm-toolbar-spacer {
+	flex: 1 1 auto;
+}
+
+.cm-modal-stage {
+	position: relative;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 200px;
+	overflow: hidden;
+	background: var(--cm-modal-bg, var(--background-primary));
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	cursor: grab;
+	touch-action: none;
+}
+
+.cm-modal-stage.cm-grabbing {
+	cursor: grabbing;
+}
+
+.cm-modal-media {
+	display: block;
+	max-width: none !important;
+	max-height: none !important;
+	transform-origin: center center;
+	user-select: none;
+	-webkit-user-drag: none;
+}
+
+/* ---------------------------------------------------------------- settings */
+
+.cm-theme-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.cm-theme-editor {
+	padding: 4px 12px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+}
+
+.cm-theme-json {
+	width: 100%;
+	min-height: 160px;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	resize: vertical;
+}
+
+.cm-theme-json.cm-invalid {
+	border-color: var(--text-error);
+}
+
+.cm-theme-status {
+	margin-top: 4px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.cm-theme-status.cm-invalid {
+	color: var(--text-error);
+}

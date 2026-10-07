@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+main.js
+*.js.map
+
+# Plugin runtime data (personal settings)
+data.json
+
+# Local tooling / notes (may contain local paths, never commit)
+.trae/
+.env
+.env.*
+*.local
+*.log
+
+# Obsidian vault leftovers
+.obsidian/
+
+# OS junk
+.DS_Store
+Thumbs.db
