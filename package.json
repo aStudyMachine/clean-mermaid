@@ -1,6 +1,6 @@
 {
   "name": "clean-mermaid",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Codex-style Mermaid rendering for Obsidian — ELK layout, auto-fit & center, zoom/pan, image preview, PNG/SVG export, built-in and custom themes.",
   "main": "main.js",
   "scripts": {

@@ -7,6 +7,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 [README.md](README.md) / [README.zh-CN.md](README.zh-CN.md) 特性与用法 ·
 [CONTRIBUTING.md](CONTRIBUTING.md) 环境、目录结构、实现约定、手动验收清单 ·
 [docs/obsidian-internals.md](docs/obsidian-internals.md) 动渲染 / 主题 / 接管前必读的逆向结论 ·
+[CHANGELOG.md](CHANGELOG.md) 版本变更记录（发版时补条目） ·
 [TODO.md](TODO.md) 当前待办（完成即删）
 
 ## 动手前必知的事实

@@ -1,7 +1,7 @@
 {
   "id": "clean-mermaid",
   "name": "Clean Mermaid",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minAppVersion": "1.4.0",
   "description": "Codex-style Mermaid rendering: ELK layout, auto-fit & center, zoom & pan, image preview, PNG/SVG export, built-in and custom themes.",
   "author": "Clean Mermaid contributors",
