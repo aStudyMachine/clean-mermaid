@@ -29,10 +29,14 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 - 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
 - CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
+- 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `fit.ts` / `themes.ts` / `i18n.ts`。
 - mermaid 版本已固定，升级版本需先在本地验证渲染行为再提交（四套主题着色、ELK/Dagre 差异、指令合并优先级）。
 
 ## 常用命令
 
-- `npm run build`：类型检查 + 生产构建
+- `npm run build`：类型检查（src + tests）+ 生产构建
+- `npm test`：vitest 单测，只覆盖无 Obsidian 依赖的纯模块（`directives` / `fit` / `themes` / `i18n`）
+- `npm run test:browser`：构建并托管 `tests/browser/` 的两个真实渲染验证页（主题 × 布局、主题与缓存
+  不变量），升级 mermaid 前必跑
 - `VAULT=<vault 路径> npm run deploy`：把构建产物部署进 vault 测试，之后需在 Obsidian 里重载插件
   （不会热更新）

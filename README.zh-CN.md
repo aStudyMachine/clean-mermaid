@@ -122,6 +122,7 @@ flowchart LR
 src/
   main.ts             插件入口：处理器注册、实时预览扩展、命令
   block.ts            单个图表：卡片 DOM、交互、导出
+  directives.ts       `%% cm: %%` 单图指令解析（纯逻辑，有单测）
   livepreview.ts      实时预览下接管 Obsidian 已渲染的 mermaid 部件
   mermaid-runtime.ts  自带 mermaid + 配置注入 + LRU 缓存
   themes.ts           内置主题、自定义主题解析与校验
@@ -130,12 +131,15 @@ src/
   export.ts           PNG/SVG/剪贴板/移动端保存
   i18n.ts             语言检测与中英取词，供全部界面文案使用
   settings.ts         设置模型与设置面板
+tests/                纯逻辑模块的 vitest 单测；tests/browser/ 为浏览器验证脚本
 ```
 
 ```bash
 npm install          # 安装依赖
 npm run dev          # esbuild 监听构建
 npm run build        # 类型检查 + 生产构建（main.js）
+npm test             # 单元测试（不需要 Obsidian）
+npm run test:browser # 用浏览器验证真实 mermaid 渲染
 VAULT="<路径>" npm run deploy   # 把构建产物复制到某个 vault 以便测试
 ```
 

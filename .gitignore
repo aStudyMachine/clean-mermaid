@@ -5,6 +5,9 @@ node_modules/
 main.js
 *.js.map
 
+# Browser harness bundles (regenerate with: npm run test:browser)
+tests/browser/*.js
+
 # Plugin runtime data (personal settings)
 data.json
 

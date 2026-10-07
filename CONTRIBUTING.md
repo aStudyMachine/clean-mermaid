@@ -14,8 +14,16 @@ Thanks for helping! Please keep the plugin's scope small and predictable.
 ```bash
 npm install
 npm run dev        # watch build -> main.js
-npm run build      # type-check (tsc --noEmit) + production build
+npm run build      # type-check (tsc --noEmit, src + tests) + production build
+npm test           # unit tests (vitest, no Obsidian needed)
+npm run test:watch # re-run affected tests on change
 ```
+
+Browser harnesses (real mermaid rendering, needs a browser, not Obsidian):
+`npm run test:browser` builds `tests/browser/*.js` and serves them — open
+`http://localhost:8787/render.html` (4 themes × 2 layouts + directive precedence) and
+`http://localhost:8787/cache.html` (theme/cache invariants). Run these before merging a mermaid
+version bump.
 
 Deploy the build into a vault for testing — **never hardcode a vault path**:
 
@@ -33,7 +41,8 @@ hot-reloaded.
 | Path | Responsibility |
 | --- | --- |
 | `src/main.ts` | Plugin entry: registers the `mermaid` code block processor (`sortOrder -100`), the live preview extension, commands, appearance listener |
-| `src/block.ts` | One rendered block: directive parsing, card DOM, zoom/pan state machine, `ResizeObserver`, exports |
+| `src/block.ts` | One rendered block: card DOM, zoom/pan state machine, `ResizeObserver`, exports |
+| `src/directives.ts` | `%% cm: ... %%` directive parsing (pure string logic, unit-tested) |
 | `src/livepreview.ts` | Live preview takeover (Obsidian hard-codes mermaid rendering there, so the rendered widget is replaced) |
 | `src/mermaid-runtime.ts` | Bundled mermaid runtime: init config, `%%{init}%%` injection, SVG normalisation, LRU cache |
 | `src/themes.ts` | Built-in themes, custom theme parsing/validation, theme resolution for light/dark |
@@ -43,6 +52,10 @@ hot-reloaded.
 | `src/i18n.ts` | Language detection (`auto` follows Obsidian) and the bilingual picker behind every label the plugin draws |
 | `src/settings.ts` | Settings model + settings tab (custom theme JSON editor, UI language option) |
 | `styles.css` | All styles, namespaced with the `cm-` prefix; light/dark via `body.theme-dark` |
+| `tests/` | Vitest unit tests for the pure modules (`directives.ts`, `fit.ts`, `themes.ts`, `i18n.ts`) |
+| `tests/browser/` | Browser harnesses for real mermaid rendering (theme × layout output, theme/cache invariants) |
+| `scripts/deploy.mjs` | Copies the three artifacts into a vault given by `VAULT` or a CLI argument |
+| `scripts/scan-asar.mjs` | Re-checks the Obsidian internals behind `docs/obsidian-internals.md` after an upgrade |
 
 ## Guidelines
 
@@ -50,6 +63,10 @@ hot-reloaded.
 - Every user-facing string goes through `plugin.t(english, chinese)` (`src/i18n.ts`) — no hard-coded
   labels in the card toolbar, menus, error card, viewer or notices.
 - Pure logic belongs in `fit.ts` / `themes.ts` style modules so it stays testable.
+- A module that unit tests import must not import the `obsidian` package at runtime: that package
+  ships typings only (`"main": ""`), so the import cannot resolve outside Obsidian. Keep pure
+  helpers (directive parsing, fit math, theme resolution, i18n) in modules free of it — `block.ts`,
+  `main.ts` and `settings.ts` are the ones bound to Obsidian.
 - The render cache key and the card signature must cover **every** input that changes the SVG —
   theme *content* (`themeIdentity`, not the theme id), layout, ELK options, the diagram source, and
   the appearance in plain mode. A narrower key silently replays a stale diagram.
@@ -69,7 +86,8 @@ hot-reloaded.
 
 ## Manual acceptance checklist
 
-Run this in a vault with `main.js`, `manifest.json` and `styles.css` deployed, then verify:
+Automated checks first — `npm test` and `npm run build` must both be green (CI runs them on every
+PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` deployed, and verify:
 
 1. Reading view: ` ```mermaid ` blocks render as Clean Mermaid cards (white/dark canvas, centred,
    corner controls) — not with Obsidian's built-in renderer.

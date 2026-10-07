@@ -127,6 +127,7 @@ prepends its configuration, so the values you write later take precedence.
 src/
   main.ts             plugin entry: processor registration, live preview extension, commands
   block.ts            one rendered diagram: card DOM, interactions, exports
+  directives.ts       %% cm: %% per-diagram directive parsing (pure, unit-tested)
   livepreview.ts      live preview takeover of Obsidian's rendered mermaid widgets
   mermaid-runtime.ts  bundled mermaid + config injection + LRU cache
   themes.ts           built-in themes, custom theme parsing/resolution
@@ -135,12 +136,15 @@ src/
   export.ts           PNG/SVG/clipboard/mobile-save helpers
   i18n.ts             language detection + the bilingual picker used by every label
   settings.ts         settings model + settings tab
+tests/                vitest unit tests for the pure modules, plus tests/browser/ harnesses
 ```
 
 ```bash
 npm install          # install dependencies
 npm run dev          # esbuild watch build
 npm run build        # type-check + production build (main.js)
+npm test             # unit tests (no Obsidian needed)
+npm run test:browser # browser harnesses for real mermaid rendering
 VAULT="<path>" npm run deploy   # copy the build into a vault for testing
 ```
 
