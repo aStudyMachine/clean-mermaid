@@ -1,0 +1,16 @@
+# Normalise line endings so contributors on Windows and Unix produce identical diffs.
+* text=auto eol=lf
+
+# Explicit binary files (never converted, never diffed as text).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.gz binary
+
+# Windows-only scripts keep CRLF if they are ever added.
+*.bat text eol=crlf
+*.cmd text eol=crlf
