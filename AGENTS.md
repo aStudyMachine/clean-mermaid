@@ -25,6 +25,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 ## 护栏
 
 - 仓库保持无本机路径、无 vault 名、无个人信息；部署脚本只从 `VAULT` 环境变量或命令行参数取路径。
+- 本机路径与版本记在 `.local/env.md`（`.local` 整目录被 gitignore 的 `*.local` 覆盖，模板见 `local-env.example.md`）；需要 vault 路径、Obsidian 版本或 gh 落点时读它，不要问也不要猜。
 - 双语文档保持同步：`README.md` ↔ `README.zh-CN.md`、`CONTRIBUTING.md` ↔ `CONTRIBUTING.zh-CN.md`。
 - 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
 - CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
@@ -39,4 +40,4 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 - `npm run test:browser`：构建并托管 `tests/browser/` 的两个真实渲染验证页（主题 × 布局、主题与缓存
   不变量），升级 mermaid 前必跑
 - `VAULT=<vault 路径> npm run deploy`：把构建产物部署进 vault 测试，之后需在 Obsidian 里重载插件
-  （不会热更新）
+  （不会热更新）；本机的 vault 路径见 `.local/env.md`

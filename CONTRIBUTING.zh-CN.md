@@ -33,6 +33,9 @@ npm run deploy -- "<你的 Vault 路径>"
 
 之后在 Obsidian 里重载插件（*设置 → 第三方插件 → 重新加载*）；插件不支持热更新。
 
+本机自己的信息 —— vault 路径、Obsidian 版本、工具落点 —— 记在 `.local/env.md`（整目录已被
+gitignore，照 `local-env.example.md` 复制一份填写），不要写进任何入库文件。
+
 ## 目录结构
 
 | 路径 | 职责 |
@@ -53,6 +56,7 @@ npm run deploy -- "<你的 Vault 路径>"
 | `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量） |
 | `scripts/deploy.mjs` | 把三个产物拷进由 `VAULT` 或命令行参数指定的 vault |
 | `scripts/scan-asar.mjs` | Obsidian 升级后重新核对 `docs/obsidian-internals.md` 里的逆向结论 |
+| `local-env.example.md` | `.local/env.md` 的模板 —— 各台机器把自己的路径记在那里，不入库 |
 
 ## 实现约定
 

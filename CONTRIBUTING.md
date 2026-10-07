@@ -36,6 +36,10 @@ npm run deploy -- "<path-to-your-vault>"
 Then reload the plugin in Obsidian (*Settings → Community plugins → reload*); plugins are not
 hot-reloaded.
 
+Keep your machine's own facts — vault paths, Obsidian version, tool locations — in `.local/env.md`
+(the whole directory is git-ignored; copy `local-env.example.md` to start). Never write them into a
+committed file.
+
 ## Project layout
 
 | Path | Responsibility |
@@ -56,6 +60,7 @@ hot-reloaded.
 | `tests/browser/` | Browser harnesses for real mermaid rendering (theme × layout output, theme/cache invariants) |
 | `scripts/deploy.mjs` | Copies the three artifacts into a vault given by `VAULT` or a CLI argument |
 | `scripts/scan-asar.mjs` | Re-checks the Obsidian internals behind `docs/obsidian-internals.md` after an upgrade |
+| `local-env.example.md` | Template for `.local/env.md` — where each machine records its own paths (never committed) |
 
 ## Guidelines
 
