@@ -53,7 +53,7 @@ async function main(): Promise<void> {
 		}
 	}
 
-	// Check that a user-written init directive still wins over ours (mainBkg paints node fills).
+	// 校验用户手写的 init 指令仍优先于我们的（mainBkg 决定节点填充色）。
 	try {
 		const overridden = await renderDiagram({
 			code: `%%{init: {"themeVariables": {"mainBkg": "#ff0000"}}}%%\n${FLOW}`,
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
 		results.push({ check: "user directive wins", error: error instanceof Error ? error.message : String(error) });
 	}
 
-	// Check plain mode renders.
+	// 校验 plain 模式可渲染。
 	try {
 		const plain = await renderDiagram({
 			code: FLOW,

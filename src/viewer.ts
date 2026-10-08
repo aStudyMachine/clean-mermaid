@@ -15,7 +15,7 @@ interface Point {
 	y: number;
 }
 
-/** Fullscreen pan/zoom viewer opened from the ⤢ button on a diagram. */
+/** 由图表上的 ⤢ 按钮打开的全屏平移/缩放查看器。 */
 export class DiagramViewerModal extends Modal {
 	private readonly plugin: CleanMermaidPlugin;
 	private readonly data: ViewerData;
@@ -125,7 +125,7 @@ export class DiagramViewerModal extends Modal {
 		stage.addEventListener(
 			"wheel",
 			(event: WheelEvent) => {
-				// The viewer has nothing else to scroll, so a plain wheel zooms as well.
+				// 查看器里没有别的可滚内容，普通滚轮也直接用来缩放。
 				event.preventDefault();
 				const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
 				this.zoomAt(event.clientX, event.clientY, factor);
@@ -186,7 +186,7 @@ export class DiagramViewerModal extends Modal {
 			try {
 				stage.releasePointerCapture(event.pointerId);
 			} catch {
-				// Pointer capture may already be released.
+				// 指针捕获可能已经被释放了。
 			}
 		};
 		stage.addEventListener("pointerup", endPointer);

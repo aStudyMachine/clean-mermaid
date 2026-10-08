@@ -5,8 +5,8 @@ import { createLivePreviewExtension } from "./livepreview";
 import { CleanMermaidSettingTab, DEFAULT_SETTINGS, migrateSettings, type CleanMermaidSettings } from "./settings";
 
 /**
- * Clean Mermaid — renders every ```mermaid block with a clean, Codex-style card:
- * ELK layout, auto-fit, zoom & pan, image preview, PNG/SVG export and theming.
+ * Clean Mermaid —— 用简洁的 Codex 风格卡片渲染每个 ```mermaid 代码块：
+ * ELK 布局、自适应、缩放平移、图片预览、PNG/SVG 导出与主题。
  */
 export default class CleanMermaidPlugin extends Plugin {
 	settings: CleanMermaidSettings = structuredClone(DEFAULT_SETTINGS);
@@ -19,8 +19,8 @@ export default class CleanMermaidPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		// Reading view: take over the `mermaid` code block language ahead of Obsidian's own
-		// mermaid post processor (sortOrder -100).
+		// 阅读视图：在 Obsidian 自带的 mermaid 后处理器之前接管 `mermaid` 代码块语言
+		// （sortOrder -100）。
 		try {
 			this.registerMarkdownCodeBlockProcessor(
 				"mermaid",
@@ -31,21 +31,21 @@ export default class CleanMermaidPlugin extends Plugin {
 			);
 			console.info("[clean-mermaid] reading view processor registered");
 		} catch (error) {
-			// Another plugin already owns the language. Reading view keeps its renderer, but live
-			// preview takeover below still works.
+			// 已经有其它插件占用了这个语言。阅读视图继续用它的渲染器，但下面的
+			// 实时预览接管仍然生效。
 			console.warn("[clean-mermaid] could not register the mermaid code block processor", error);
 		}
 
-		// Live preview: Obsidian renders mermaid with a hard-coded core renderer that ignores the
-		// processor registry, so the rendered widget is replaced by our card instead.
+		// 实时预览：Obsidian 渲染 mermaid 用的是硬编码的核心渲染器，不看处理器注册表，
+		// 所以改成把已渲染好的部件替换成我们的卡片。
 		this.registerEditorExtension(createLivePreviewExtension(this));
 
 		this.addSettingTab(new CleanMermaidSettingTab(this.app, this));
 
 		this.registerCommands();
 
-		// Appearance switches (light/dark, theme changes) need a re-render because the
-		// theme variables are baked into the SVG.
+		// 外观切换（浅色/深色、主题变更）需要重渲染，因为
+		// themeVariables 已经烘进 SVG 里了。
 		this.registerEvent(this.app.workspace.on("css-change", () => this.refreshAll()));
 	}
 
@@ -53,7 +53,7 @@ export default class CleanMermaidPlugin extends Plugin {
 		this.blocks.clear();
 	}
 
-	/** Command palette entries are labelled once at registration, so re-register them on a language switch. */
+	/** 命令面板条目的标签只在注册时定一次，所以切换语言时要重新注册。 */
 	private registerCommands(): void {
 		if (this.commandsRegistered) {
 			this.removeCommand("redraw-diagrams");
@@ -78,12 +78,12 @@ export default class CleanMermaidPlugin extends Plugin {
 		return document.body.classList.contains("theme-dark");
 	}
 
-	/** The interface language this plugin renders in. */
+	/** 本插件界面所用的语言。 */
 	get language(): Language {
 		return resolveLanguage(this.settings.language);
 	}
 
-	/** User-facing string for the active language. */
+	/** 当前语言下的用户可见文案。 */
 	t(english: string, chinese: string): string {
 		return pick(this.language, english, chinese);
 	}
@@ -92,7 +92,7 @@ export default class CleanMermaidPlugin extends Plugin {
 		const stored = (await this.loadData()) as Partial<CleanMermaidSettings> | null;
 		this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), stored ?? {});
 		if (migrateSettings(this.settings)) {
-			// Settings from an earlier build referenced the old built-in theme ids — persist the rewrite.
+			// 早期构建的设置里引用的是旧的内置主题 id —— 把改写结果落盘。
 			await this.saveSettings();
 		}
 	}
@@ -110,14 +110,14 @@ export default class CleanMermaidPlugin extends Plugin {
 		this.refreshAll();
 	}
 
-	/** Re-renders every diagram (settings changed). Cheap when nothing actually changed. */
+	/** 重渲染所有图表（设置变更后）。实际没变化时开销很小。 */
 	refreshAll(): void {
 		for (const block of this.blocks) {
 			void block.refresh(false);
 		}
 	}
 
-	/** Forces a fresh render, bypassing the "nothing changed" shortcut. */
+	/** 强制重画，绕过「什么都没变」的短路。 */
 	redrawAll(): void {
 		for (const block of this.blocks) {
 			void block.refresh(true);

@@ -9,8 +9,8 @@ export interface BlockDirectives {
 const DIRECTIVE_PATTERN = /^\s*%%\s*cm\s*:\s*(.+?)\s*%%\s*$/;
 
 /**
- * Reads leading `%% cm:... %%` directives and strips them from the source.
- * Supported: `%% cm:theme=<id> %%`, `%% cm:layout=elk|dagre %%`, `%% cm:plain %%`.
+ * 读取开头的 `%% cm:... %%` 指令，并把它们从源码里剥掉。
+ * 支持：`%% cm:theme=<id> %%`、`%% cm:layout=elk|dagre %%`、`%% cm:plain %%`。
  */
 export function parseBlockDirectives(
 	source: string,

@@ -30,15 +30,15 @@ export interface CustomTheme {
 }
 
 export interface CleanMermaidSettings {
-	/** Language used by every string this plugin draws. */
+	/** 插件绘制的所有界面文案使用的语言。 */
 	language: LanguageSetting;
-	/** Theme used while Obsidian is in light appearance. */
+	/** Obsidian 浅色外观下使用的主题。 */
 	lightThemeId: string;
-	/** Theme used while Obsidian is in dark appearance. */
+	/** Obsidian 深色外观下使用的主题。 */
 	darkThemeId: string;
-	/** Follow the Obsidian appearance automatically; disable to pin one theme. */
+	/** 自动跟随 Obsidian 明暗；关闭则固定用某个主题。 */
 	followAppearance: boolean;
-	/** Theme used when followAppearance is off. */
+	/** followAppearance 关闭时使用的主题。 */
 	fixedThemeId: string;
 
 	layoutEngine: LayoutEngine;
@@ -46,9 +46,9 @@ export interface CleanMermaidSettings {
 	elkNodePlacement: ElkNodePlacement;
 
 	fitMode: FitMode;
-	/** Max upscale in percent (150 = 150%). */
+	/** 放大上限，单位是百分比（150 = 150%）。 */
 	maxUpscale: number;
-	/** Max diagram height in percent of the viewport height. */
+	/** 图表最大高度，占视口高度的百分比。 */
 	maxHeightVh: number;
 
 	wheelZoom: boolean;
@@ -97,15 +97,15 @@ export const DEFAULT_SETTINGS: CleanMermaidSettings = {
 	customThemes: [],
 };
 
-/** Theme ids used before the built-in themes were renamed to Clean Light / Clean Dark. */
+/** 内置主题改名为 Clean Light / Clean Dark 之前所使用的主题 id。 */
 const LEGACY_THEME_IDS: Record<string, string> = {
 	"codex-light": "clean-light",
 	"codex-dark": "clean-dark",
 };
 
 /**
- * Maps configuration written by earlier builds onto the current theme ids, so saved settings keep
- * working after the rename. Returns true when something had to be rewritten.
+ * 把早期版本写入的配置映射到当前的主题 id，改名之后已保存的设置仍可继续使用。
+ * 有内容被改写时返回 true。
  */
 export function migrateSettings(settings: CleanMermaidSettings): boolean {
 	let changed = false;

@@ -1,8 +1,8 @@
-// Dev-only helper: scan Obsidian's app.asar for the code block processor implementation to learn
-// the real semantics of sortOrder / built-in mermaid handling. Conclusions live in
-// docs/obsidian-internals.md; re-run this after an Obsidian upgrade before touching the takeover.
+// 仅开发期用：扫描 Obsidian 的 app.asar 里的代码块处理器实现，弄清 sortOrder /
+// 内置 mermaid 处理的真实语义。结论写在 docs/obsidian-internals.md；
+// 升级 Obsidian 后要重跑一次，再决定怎么改接管。
 //
-// Usage: node scripts/scan-asar.mjs "<path-to-obsidian.asar>" "<needle>" ["<needle>" ...]
+// 用法：node scripts/scan-asar.mjs "<path-to-obsidian.asar>" "<needle>" ["<needle>" ...]
 import { readFileSync } from "node:fs";
 
 const asar = process.argv[2];

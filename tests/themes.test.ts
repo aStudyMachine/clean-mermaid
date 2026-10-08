@@ -13,7 +13,7 @@ import {
 } from "../src/themes";
 import type { CleanMermaidSettings } from "../src/settings";
 
-// Mirrors DEFAULT_SETTINGS, kept here so the tests never import settings.ts (which needs Obsidian).
+// 与 DEFAULT_SETTINGS 保持一致，写在这里是为了让测试永不导入 settings.ts（那个模块需要 Obsidian）。
 const base: CleanMermaidSettings = {
 	language: "auto",
 	lightThemeId: "clean-light",

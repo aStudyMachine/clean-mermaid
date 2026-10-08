@@ -13,7 +13,7 @@ describe("parseBlockDirectives", () => {
 		expect(parseBlockDirectives("%% cm:layout=dagre %%\nflowchart LR", true).directives.layout).toBe("dagre");
 		const bogus = parseBlockDirectives("%% cm:layout=dot %%\nflowchart LR", true);
 		expect(bogus.directives.layout).toBeUndefined();
-		// The line is still a directive line, so it never reaches mermaid.
+		// 这一行仍是指令行，所以不会落到 mermaid 那里。
 		expect(bogus.code).toBe("flowchart LR");
 	});
 

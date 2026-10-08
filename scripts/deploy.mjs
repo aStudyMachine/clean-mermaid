@@ -1,7 +1,7 @@
 /**
- * Deploy the built plugin into a local Obsidian vault for testing.
+ * 把构建产物部署进本地 Obsidian vault 做测试。
  *
- * Usage (no paths are hardcoded — never commit personal vault paths):
+ * 用法（不硬编码任何路径 — 切勿提交个人 vault 路径）：
  *   VAULT=<path-to-vault> npm run deploy
  *   npm run deploy -- <path-to-vault>
  */

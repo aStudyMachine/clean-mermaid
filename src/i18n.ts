@@ -1,8 +1,8 @@
-/** `auto` follows Obsidian's own interface language. */
+/** `auto` 跟随 Obsidian 自身的界面语言。 */
 export type LanguageSetting = "auto" | "zh" | "en";
 export type Language = "zh" | "en";
 
-/** Obsidian keeps its interface language in local storage (e.g. "zh", "zh-TW", "en"). */
+/** Obsidian 把界面语言存在 local storage 里（如 "zh"、"zh-TW"、"en"）。 */
 export function detectObsidianLanguage(): Language {
 	try {
 		const stored = window.localStorage.getItem("language");
@@ -10,7 +10,7 @@ export function detectObsidianLanguage(): Language {
 			return stored.toLowerCase().startsWith("zh") ? "zh" : "en";
 		}
 	} catch {
-		// Local storage unavailable — fall through to the browser language.
+		// local storage 不可用 —— 继续回退到浏览器语言。
 	}
 	return navigator.language?.toLowerCase().startsWith("zh") ? "zh" : "en";
 }
@@ -22,7 +22,7 @@ export function resolveLanguage(setting: LanguageSetting): Language {
 	return detectObsidianLanguage();
 }
 
-/** Picks the string for the active language. */
+/** 取当前语言对应的文案。 */
 export function pick(language: Language, english: string, chinese: string): string {
 	return language === "zh" ? chinese : english;
 }

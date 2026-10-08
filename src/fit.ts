@@ -8,26 +8,26 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 export interface FitInput {
-	/** Natural width of the diagram in px (from the SVG viewBox). */
+	/** 图表的自然宽度（px，取自 SVG viewBox）。 */
 	naturalW: number;
-	/** Natural height of the diagram in px. */
+	/** 图表的自然高度（px）。 */
 	naturalH: number;
-	/** Available width of the block in px. */
+	/** 代码块可用宽度（px）。 */
 	containerW: number;
-	/** Current viewport height in px. */
+	/** 当前视口高度（px）。 */
 	viewportH: number;
 	mode: FitMode;
-	/** Hard cap for upscaling, as a ratio (1.5 = 150%). */
+	/** 放大的硬上限，比例值（1.5 = 150%）。 */
 	maxUpscale: number;
-	/** Hard cap for the rendered height, as a ratio of the viewport height (0.8 = 80%). */
+	/** 渲染高度的硬上限，按视口高度的比例表示（0.8 = 80%）。 */
 	maxHeightRatio: number;
 }
 
 /**
- * Pure function that decides the initial display scale for a diagram.
- * - "width": scale to the block width (clamped by maxUpscale and maxHeightRatio).
- * - "viewport": fit into both the block width and the max height.
- * - "raw": keep the natural size (never upscale), only shrink if it is taller than the cap.
+ * 纯函数：决定图表的初始显示缩放。
+ * - "width"：按代码块宽度缩放（受 maxUpscale 与 maxHeightRatio 夹取）。
+ * - "viewport"：同时装进代码块宽度和最大高度。
+ * - "raw"：保持自然尺寸（永不放大），只有超出上限时才缩小。
  */
 export function computeFit(input: FitInput): number {
 	const { naturalW, naturalH, containerW, viewportH, mode, maxUpscale, maxHeightRatio } = input;
@@ -54,7 +54,7 @@ export function computeFit(input: FitInput): number {
 	if (mode !== "raw") {
 		scale = Math.min(scale, maxUpscale);
 	}
-	// The height cap applies to every mode so a huge diagram never dominates the note.
+	// 高度上限对所有模式都生效，免得巨大的图表把整篇笔记挤掉。
 	scale = Math.min(scale, maxHeight / naturalH);
 
 	return clamp(scale, MIN_SCALE, MAX_SCALE);

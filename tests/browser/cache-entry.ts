@@ -37,7 +37,7 @@ async function req(theme: AnyTheme, plain = false) {
 const results: Record<string, unknown>[] = [];
 
 async function main(): Promise<void> {
-	// 1. Editing the colours of an existing custom theme (same id) must produce a new SVG.
+	// 1. 修改已有自定义主题的配色（id 不变）必须产出新的 SVG。
 	const first = await req(custom("#111111"));
 	const edited = await req(custom("#ff0000"));
 	results.push({
@@ -47,11 +47,11 @@ async function main(): Promise<void> {
 		editedDroppedOldColor: !edited.svg.includes("#111111"),
 	});
 
-	// 2. Nothing about caching got worse: an identical request comes straight back out of it.
+	// 2. 缓存没有退化：完全相同的请求直接从缓存返回。
 	const again = await req(custom("#ff0000"));
 	results.push({ check: "identical request still hits cache", sameReference: again === edited });
 
-	// 3. Identity separates same-id themes by content, and honours the dark flag.
+	// 3. themeIdentity 按内容区分同 id 的主题，并计入 dark 标志。
 	results.push({
 		check: "themeIdentity content + dark flag",
 		differsByColors: themeIdentity(custom("#111111")) !== themeIdentity(custom("#222222")),
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
 		nullIsNone: themeIdentity(null) === "none",
 	});
 
-	// 4. Plain mode bakes the document appearance into the SVG, so it must not replay across looks.
+	// 4. plain 模式把文档外观烘进 SVG，换外观后不能复用另一外观的结果。
 	document.body.classList.remove("theme-dark");
 	const plainLight = await req(null, true);
 	document.body.classList.add("theme-dark");
@@ -75,7 +75,7 @@ async function main(): Promise<void> {
 		lightHitsLight: lightAgain === plainLight,
 	});
 
-	// 5. The same diagram in two themes that happen to share an id prefix still renders twice.
+	// 5. 同一图表用两个恰好共享 id 前缀的主题，仍然各渲染一次。
 	const other = await req({ ...custom("#00ff00"), id: "other-custom" });
 	results.push({
 		check: "different ids are independent",

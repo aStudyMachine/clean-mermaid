@@ -12,8 +12,8 @@ export interface ThemeDefinition {
 }
 
 /**
- * Clean Light — matches the reference screenshots: white canvas, pale violet nodes,
- * grey edges, soft violet edge-label pills.
+ * Clean Light — 对齐参考截图：白色画布、淡紫节点、灰色连线。
+ * 连线标签底色为柔和的淡紫小块。
  */
 const CLEAN_LIGHT: ThemeDefinition = {
 	id: "clean-light",
@@ -24,28 +24,28 @@ const CLEAN_LIGHT: ThemeDefinition = {
 		background: "#ffffff",
 		fontFamily: SYSTEM_FONT_STACK,
 		fontSize: "14px",
-		// Nodes
+		// 节点
 		primaryColor: "#f1effc",
 		primaryBorderColor: "#c4b5fd",
 		primaryTextColor: "#3f3f46",
 		mainBkg: "#f1effc",
 		nodeBorder: "#c4b5fd",
 		nodeTextColor: "#3f3f46",
-		// Secondary / tertiary surfaces
+		// 次级 / 三级配色面
 		secondaryColor: "#f4f2ff",
 		secondaryBorderColor: "#d8d1f7",
 		secondaryTextColor: "#3f3f46",
 		tertiaryColor: "#fafaff",
 		tertiaryBorderColor: "#e4e4e7",
 		tertiaryTextColor: "#52525b",
-		// Edges & labels
+		// 连线与标签
 		lineColor: "#a1a1aa",
 		textColor: "#3f3f46",
 		titleColor: "#52525b",
 		clusterBkg: "#fafafa",
 		clusterBorder: "#e4e4e7",
 		edgeLabelBackground: "#f4f2ff",
-		// Sequence diagrams
+		// 时序图
 		actorBkg: "#f1effc",
 		actorBorder: "#c4b5fd",
 		actorTextColor: "#3f3f46",
@@ -65,7 +65,7 @@ const CLEAN_LIGHT: ThemeDefinition = {
 	},
 };
 
-/** Clean Dark — the dark-appearance companion of Clean Light. */
+/** Clean Dark —— Clean Light 的深色外观版本。 */
 const CLEAN_DARK: ThemeDefinition = {
 	id: "clean-dark",
 	name: "Clean Dark",
@@ -112,7 +112,7 @@ const CLEAN_DARK: ThemeDefinition = {
 	},
 };
 
-/** Neutral — near-monochrome, print friendly. */
+/** Neutral —— 近乎单色，适合打印。 */
 const NEUTRAL: ThemeDefinition = {
 	id: "neutral",
 	name: "Neutral",
@@ -148,7 +148,7 @@ const NEUTRAL: ThemeDefinition = {
 	},
 };
 
-/** GitHub Light — the familiar mermaid default palette. */
+/** GitHub Light —— 大家熟悉的 mermaid 默认配色。 */
 const GITHUB_LIGHT: ThemeDefinition = {
 	id: "github-light",
 	name: "GitHub Light",
@@ -194,7 +194,7 @@ export type ParseVariablesResult =
 	| { ok: true; variables: Record<string, unknown> }
 	| { ok: false; error: string };
 
-/** Validates a user-edited themeVariables JSON string. */
+/** 校验用户手改的 themeVariables JSON 字符串。 */
 export function parseThemeVariables(text: string): ParseVariablesResult {
 	let parsed: unknown;
 	try {
@@ -230,7 +230,7 @@ export function findTheme(settings: CleanMermaidSettings, id: string): ThemeDefi
 	return allThemes(settings).find((theme) => theme.id === id);
 }
 
-/** The theme used when the user did not set a per-diagram override. */
+/** 用户没有设置单图覆盖时使用的主题。 */
 export function resolveActiveTheme(
 	settings: CleanMermaidSettings,
 	isDark: boolean,
@@ -253,9 +253,8 @@ export function resolveActiveTheme(
 }
 
 /**
- * Identity of what a theme actually paints with, so editing an existing custom theme is
- * distinguishable from switching between themes. `dark` is part of it because the card and PNG
- * background fall back to it when the theme has no `background` variable.
+ * 主题实际用来着色的内容标识，这样「编辑已有自定义主题」能和「切换主题」区分开。
+ * `dark` 也算进标识，是因为主题没有 `background` 变量时，卡片和 PNG 背景会回退到它。
  */
 export function themeIdentity(theme: ThemeDefinition | null): string {
 	if (!theme) {
@@ -264,7 +263,7 @@ export function themeIdentity(theme: ThemeDefinition | null): string {
 	return `${theme.id}|${theme.dark ? "dark" : "light"}|${JSON.stringify(theme.variables)}`;
 }
 
-/** Background colour of the diagram card — also used as the PNG export background. */
+/** 图表卡片的背景色 —— 同时用作 PNG 导出的背景色。 */
 export function themeCanvasColor(theme: ThemeDefinition | null): string {
 	const background = theme?.variables["background"];
 	if (typeof background === "string" && background.trim() !== "") {

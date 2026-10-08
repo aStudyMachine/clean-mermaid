@@ -2,14 +2,14 @@ import { App, Notice, Platform, normalizePath } from "obsidian";
 import { pick, type Language } from "./i18n";
 import { svgToDataUrl, type RenderedDiagram } from "./mermaid-runtime";
 
-/** Maximum pixel area we allow on the export canvas (memory guard). */
+/** 导出画布允许的最大像素面积（内存兜底）。 */
 const MAX_CANVAS_PIXELS = 40_000_000;
 
 export interface PngExportOptions {
 	width: number;
 	height: number;
 	scale: number;
-	/** `null` keeps the background transparent. */
+	/** `null` 表示背景保持透明。 */
 	background: string | null;
 	language: Language;
 }
@@ -28,7 +28,7 @@ function loadImage(url: string, language: Language): Promise<HTMLImageElement> {
 	});
 }
 
-/** Rasterises the diagram SVG into a PNG blob. */
+/** 把图表 SVG 栅格化成 PNG blob。 */
 export async function svgToPngBlob(svg: string, options: PngExportOptions): Promise<Blob> {
 	const image = await loadImage(svgToDataUrl(svg), options.language);
 
@@ -100,8 +100,8 @@ async function saveBinaryToVault(app: App, blob: Blob, filename: string): Promis
 }
 
 /**
- * Desktop downloads the file; mobile (where downloads are unreliable) saves it into the vault
- * next to the active note instead.
+ * 桌面端走浏览器下载；移动端（下载不可靠）改为存进 vault，
+ * 落在当前活动笔记的同级目录。
  */
 export async function saveOrDownload(
 	app: App,
@@ -149,7 +149,7 @@ export interface ExportBundle {
 	source: string;
 }
 
-/** Shared by the inline toolbar and the fullscreen viewer. */
+/** 内联工具条与全屏查看器共用。 */
 export async function exportDiagramPng(
 	app: App,
 	bundle: ExportBundle,
