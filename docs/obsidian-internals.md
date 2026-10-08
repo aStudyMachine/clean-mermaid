@@ -45,8 +45,14 @@
 
 ## mermaid 12 的配置语义
 
-- ELK 已内置且是**默认布局**；`@mermaid-js/layout-elk` 只服务于 tiny 构建 —— 正常依赖 `mermaid` 即可
-  （重复注册该包反而会多载一份布局代码）。
+- **版本差是理解渲染差异的前提**：Obsidian 1.14.4 自带 mermaid **11.13.0**（asar 里
+  `/lib/mermaid.min.js` 的头一行就写着它的来源 URL），插件自带的是 12.1.0。mermaid 12 起 flowchart
+  的默认布局已是 ELK（实测：不写 `layout` 键的产出与显式 `layout:"elk"` 完全一致，显式 `dagre` 不同），
+  11 仍是 dagre —— 官方 `mermaid.initialize` 不写 `layout` 键，所以 Obsidian 里的图走 dagre。
+  `npm run shots` 的「原生」一侧因此必须用从 asar 取出的那份 11.13.0
+  （`scripts/extract-obsidian-mermaid.mjs`），拿插件自带的 12.1.0 复现会得到两张一模一样的布局。
+- ELK 已内置且是本插件的默认布局；`@mermaid-js/layout-elk` 只服务于 tiny 构建 —— 正常依赖 `mermaid`
+  即可（重复注册该包反而会多载一份布局代码）。
 - `%%{init: …}%%` 指令仍有效（自 10.5 起文档标为 deprecated，推荐 frontmatter `config:`，但功能保留）。
 - 指令内容按 **JSON** 解析（解析前会把单引号统一替换成双引号），所以注入的必须是合法 JSON。
 - 多条 init 指令会**深合并，后出现者覆盖先出现者**；指令配置整体覆盖 frontmatter 的 `config:`。

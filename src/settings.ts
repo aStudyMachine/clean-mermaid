@@ -155,9 +155,9 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 		return options;
 	}
 
+	/** 通用项按官方 UI 约定置顶且不带分节标题。 */
 	private renderGeneral(containerEl: HTMLElement): void {
 		const language = this.language;
-		new Setting(containerEl).setName(pick(language, "General", "通用")).setHeading();
 
 		new Setting(containerEl)
 			.setName(pick(language, "Language", "语言"))
@@ -463,7 +463,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 			.setDesc(
 				pick(
 					language,
-					"When off, diagrams are rendered with mermaid's stock look instead of the Codex-style card.",
+					"When off, diagrams are rendered with mermaid's stock look instead of the clean card.",
 					"关闭后图表改用 mermaid 原生外观渲染，不再套用卡片样式。",
 				),
 			)

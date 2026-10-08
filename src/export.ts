@@ -1,4 +1,4 @@
-import { App, Notice, Platform, normalizePath } from "obsidian";
+import { Notice } from "obsidian";
 import { pick, type Language } from "./i18n";
 import { svgToDataUrl, type RenderedDiagram } from "./mermaid-runtime";
 
@@ -85,52 +85,6 @@ function downloadBlob(blob: Blob, filename: string): void {
 	window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-async function saveTextToVault(app: App, text: string, filename: string): Promise<string> {
-	const directory = app.workspace.getActiveFile()?.parent?.path ?? "";
-	const path = normalizePath(directory ? `${directory}/${filename}` : filename);
-	await app.vault.create(path, text);
-	return path;
-}
-
-async function saveBinaryToVault(app: App, blob: Blob, filename: string): Promise<string> {
-	const directory = app.workspace.getActiveFile()?.parent?.path ?? "";
-	const path = normalizePath(directory ? `${directory}/${filename}` : filename);
-	await app.vault.createBinary(path, await blob.arrayBuffer());
-	return path;
-}
-
-/**
- * 桌面端走浏览器下载；移动端（下载不可靠）改为存进 vault，
- * 落在当前活动笔记的同级目录。
- */
-export async function saveOrDownload(
-	app: App,
-	blob: Blob,
-	filename: string,
-	language: Language,
-): Promise<void> {
-	if (Platform.isMobile) {
-		const path = await saveBinaryToVault(app, blob, filename);
-		new Notice(pick(language, `Clean Mermaid: saved to ${path}`, `Clean Mermaid：已保存到 ${path}`));
-		return;
-	}
-	downloadBlob(blob, filename);
-}
-
-export async function saveTextOrDownload(
-	app: App,
-	text: string,
-	filename: string,
-	language: Language,
-): Promise<void> {
-	if (Platform.isMobile) {
-		const path = await saveTextToVault(app, text, filename);
-		new Notice(pick(language, `Clean Mermaid: saved to ${path}`, `Clean Mermaid：已保存到 ${path}`));
-		return;
-	}
-	downloadBlob(new Blob([text], { type: "image/svg+xml" }), filename);
-}
-
 export async function copyPngBlob(blob: Blob): Promise<void> {
 	const clipboard = navigator.clipboard;
 	if (!clipboard || typeof ClipboardItem === "undefined" || typeof clipboard.write !== "function") {
@@ -151,7 +105,6 @@ export interface ExportBundle {
 
 /** 内联工具条与全屏查看器共用。 */
 export async function exportDiagramPng(
-	app: App,
 	bundle: ExportBundle,
 	scale: number,
 	language: Language,
@@ -164,7 +117,7 @@ export async function exportDiagramPng(
 			background: bundle.background,
 			language,
 		});
-		await saveOrDownload(app, blob, timestampName("png"), language);
+		downloadBlob(blob, timestampName("png"));
 	} catch (error) {
 		console.error("[clean-mermaid] PNG export failed", error);
 		new Notice(
@@ -177,13 +130,12 @@ export async function exportDiagramPng(
 	}
 }
 
-export async function exportDiagramSvg(
-	app: App,
-	bundle: ExportBundle,
-	language: Language,
-): Promise<void> {
+export async function exportDiagramSvg(bundle: ExportBundle, language: Language): Promise<void> {
 	try {
-		await saveTextOrDownload(app, svgWithXmlHeader(bundle.rendered.svg), timestampName("svg"), language);
+		downloadBlob(
+			new Blob([svgWithXmlHeader(bundle.rendered.svg)], { type: "image/svg+xml" }),
+			timestampName("svg"),
+		);
 	} catch (error) {
 		console.error("[clean-mermaid] SVG export failed", error);
 		new Notice(
@@ -197,7 +149,6 @@ export async function exportDiagramSvg(
 }
 
 export async function copyDiagramPng(
-	app: App,
 	bundle: ExportBundle,
 	scale: number,
 	language: Language,

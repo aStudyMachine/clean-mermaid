@@ -111,10 +111,10 @@ export class DiagramViewerModal extends Modal {
 
 		const language = this.plugin.language;
 		addButton("download", this.plugin.t("Download PNG", "下载 PNG"), () =>
-			void exportDiagramPng(this.app, this.bundle(), this.plugin.settings.pngScale, language),
+			void exportDiagramPng(this.bundle(), this.plugin.settings.pngScale, language),
 		);
 		addButton("file-code", this.plugin.t("Download SVG", "下载 SVG"), () =>
-			void exportDiagramSvg(this.app, this.bundle(), language),
+			void exportDiagramSvg(this.bundle(), language),
 		);
 		addButton("x", this.plugin.t("Close", "关闭"), () => this.close());
 	}

@@ -1,10 +1,9 @@
 {
   "id": "clean-mermaid",
   "name": "Clean Mermaid",
-  "version": "0.1.1",
-  "minAppVersion": "1.4.0",
-  "description": "Codex-style Mermaid rendering: ELK layout, auto-fit & center, zoom & pan, image preview, PNG/SVG export, built-in and custom themes.",
+  "version": "0.1.2",
+  "minAppVersion": "1.14.4",
+  "description": "Render Mermaid diagrams as clean cards with ELK layout, auto-fit and centering, zoom and pan, image preview, PNG/SVG export, and built-in or custom themes.",
   "author": "Clean Mermaid contributors",
-  "authorUrl": "https://github.com/",
-  "isDesktopOnly": false
+  "isDesktopOnly": true
 }

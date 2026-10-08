@@ -5,7 +5,7 @@ import { createLivePreviewExtension } from "./livepreview";
 import { CleanMermaidSettingTab, DEFAULT_SETTINGS, migrateSettings, type CleanMermaidSettings } from "./settings";
 
 /**
- * Clean Mermaid —— 用简洁的 Codex 风格卡片渲染每个 ```mermaid 代码块：
+ * Clean Mermaid —— 把每个 ```mermaid 代码块渲染成一张干净的卡片：
  * ELK 布局、自适应、缩放平移、图片预览、PNG/SVG 导出与主题。
  */
 export default class CleanMermaidPlugin extends Plugin {
@@ -29,7 +29,6 @@ export default class CleanMermaidPlugin extends Plugin {
 				},
 				-100,
 			);
-			console.info("[clean-mermaid] reading view processor registered");
 		} catch (error) {
 			// 已经有其它插件占用了这个语言。阅读视图继续用它的渲染器，但下面的
 			// 实时预览接管仍然生效。

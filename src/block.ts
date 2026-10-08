@@ -15,7 +15,7 @@ import type { LayoutEngine } from "./settings";
 import { DiagramViewerModal } from "./viewer";
 
 /**
- * 一个已渲染的 ```mermaid 块：负责渲染图表、套上 Codex 风格卡片，并持有全部交互
+ * 一个已渲染的 ```mermaid 块：负责渲染图表、套上卡片，并持有全部交互
  * （自适应居中、缩放、平移、工具条、导出）。
  */
 export class CleanMermaidBlock extends MarkdownRenderChild {
@@ -509,7 +509,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!bundle) {
 			return;
 		}
-		await exportDiagramPng(this.plugin.app, bundle, this.plugin.settings.pngScale, this.plugin.language);
+		await exportDiagramPng(bundle, this.plugin.settings.pngScale, this.plugin.language);
 	}
 
 	private async exportSvg(): Promise<void> {
@@ -517,7 +517,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!bundle) {
 			return;
 		}
-		await exportDiagramSvg(this.plugin.app, bundle, this.plugin.language);
+		await exportDiagramSvg(bundle, this.plugin.language);
 	}
 
 	private async copyImage(): Promise<void> {
@@ -525,7 +525,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!bundle) {
 			return;
 		}
-		await copyDiagramPng(this.plugin.app, bundle, this.plugin.settings.pngScale, this.plugin.language);
+		await copyDiagramPng(bundle, this.plugin.settings.pngScale, this.plugin.language);
 	}
 
 	private async copySource(): Promise<void> {

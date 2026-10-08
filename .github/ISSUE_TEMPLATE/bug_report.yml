@@ -29,8 +29,6 @@ body:
         - Windows
         - macOS
         - Linux
-        - iOS
-        - Android
     validations:
       required: true
   - type: textarea
