@@ -14,7 +14,9 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 
 - **实时预览里 mermaid 由官方便编码渲染**：代码块部件在任何注册表查询之前就按 `lang === "mermaid"`
   直接调官方渲染器 —— 用处理器 API 在编辑视图**不可能**接管，只能像 `src/livepreview.ts` 那样
-  事后替换已渲染部件（隐藏官方输出而非删除，以兼容官方 recycler）。
+  事后替换已渲染部件（隐藏官方输出而非删除，以兼容官方 recycler）。替换必须赶在 CodeMirror 量到该
+  部件之前那一帧完成，靠的是内部钩子 `docViewUpdate`；改成 rAF 就慢一帧、滚动时会抖（细节与排障
+  路径见 [docs/obsidian-internals.md](docs/obsidian-internals.md)）。
 - **阅读视图**：官方 mermaid 是普通后处理器；我们在 `main.ts` 用
   `registerMarkdownCodeBlockProcessor("mermaid", …, -100)` 排在它之前接管。
 - **重复注册会抛异常**："同一语言已有代码块处理器"时会抛 `already registered`，`main.ts` 里那段
@@ -41,4 +43,5 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 - `npm run test:browser`：构建并托管 `tests/browser/` 的两个真实渲染验证页（主题 × 布局、主题与缓存
   不变量），升级 mermaid 前必跑
 - `VAULT=<vault 路径> npm run deploy`：把构建产物部署进 vault 测试，之后需在 Obsidian 里重载插件
-  （不会热更新）；本机的 vault 路径见 `.local/env.md`
+  （不会热更新）。改代码阶段只往 `.local/env.md` 里标为「主要 / 次要验收 / 调试」的两个库部署，
+  要换库先问；本机路径一律从 `.local/env.md` 读，不要写进本文件或仓库任何被跟踪的文件。
