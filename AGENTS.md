@@ -1,6 +1,6 @@
 # AGENTS.md — clean-mermaid 开发约定
 
-Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为 Codex 风格卡片（自带 mermaid 12、
+Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为卡片式图表（自带 mermaid 12、
 ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG 导出、主题与单图指令）。
 
 文档地图（改动前先读对应那份，避免重复劳动）：
@@ -23,6 +23,10 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   try/catch 是必要的兜底，保留它。
 - **自带运行时**：插件用自己打包的 mermaid，全局 `mermaid.initialize` 只在首次渲染前调用一次；
   按图配置全部通过注入 `%%{init: …}%%` 指令实现。多条 init 指令深合并、**后出现者覆盖先出现者**。
+- **只声明桌面**：`manifest.json` 的 `isDesktopOnly` 为 `true`，导出（`src/export.ts`）一律走浏览器下载，
+  不要再加移动端分支或移动端文案 —— 真机从未实测。
+- **兼容口径按实测写**：`minAppVersion` 取唯一实测过的 Obsidian 版本（现 1.14.4），因为接管依赖未公开的
+  选择器与钩子；要下调它先用 `scripts/scan-asar.mjs` 复核目标版本，再看 `docs/obsidian-internals.md`。
 - 更细的逆向结论与 mermaid 12 配置语义：见 [docs/obsidian-internals.md](docs/obsidian-internals.md)。
 
 ## 护栏
@@ -43,6 +47,11 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   / `scripts/resolve-vault`）
 - `npm run test:browser`：构建并托管 `tests/browser/` 的两个真实渲染验证页（主题 × 布局、主题与缓存
   不变量），升级 mermaid 前必跑
+- `npm run extract-mermaid -- "<obsidian.asar>"` + `npm run shots`：**维护者本机生成 README 素材用，
+  不属于贡献流程**（不要要求贡献者跑）。前者把 **Obsidian 自带的那份 mermaid**（1.14.4 为 11.13.0）取到
+  `tests/browser/obsidian-mermaid.min.js`（已 gitignore），后者构建两个捕获页并把 PNG 写进 `images/`。
+  「原生」一侧必须用取出来的这份 —— mermaid 12 起 flowchart 默认布局就是 ELK，用插件自带的 12.1.0
+  复现原生会得到两张一样的图。
 - `npm run deploy -- <库名> [<库名> …]`：一键跑「单测 → 构建 → 拷贝产物」，库名由 Obsidian 自己的
   vault 注册表换算成路径（`--no-check` 只拷现有产物；`--restart` 部署完重启 Obsidian，仅 Windows，
   会关掉所有库，只在维护者明确要求时用）。目标全部解析成功才开始构建，之后仍需重载插件（不会热更新）。

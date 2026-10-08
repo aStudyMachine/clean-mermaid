@@ -2,7 +2,7 @@
 
 滚动删除：完成一项即删一行，不留历史。
 
-1. [ ] 实测确认阅读视图与卡片交互：阅读视图里渲染为卡片、缩放 / 平移 / 双击复位 / 全屏 / PNG-SVG
-   导出正常；未信任 vault 时显示「允许」且不接管。有问题看控制台 `[clean-mermaid]` 开头的输出
-2. [ ] 社区插件市场上架自查：按官方 checklist 逐项核对（`manifest.json` 的 `authorUrl` 目前是占位符）
-3. [ ] 可选：issue 模板配 `config.yml`、设置面板增加更多语言（界面文案已全部走 `plugin.t`）
+1. [ ] 在 community.obsidian.md 提交插件（需要 Obsidian 账号并关联 GitHub），之后按自动审查的反馈迭代；
+   反馈要求改动时，发新 Release 必须同时抬 `manifest.json` 的 `version`，且 `manifest.json` 要合到
+   默认分支 —— 目录读的是默认分支 HEAD
+2. [ ] 可选：issue 模板配 `config.yml`、设置面板增加更多语言（界面文案已全部走 `plugin.t`）

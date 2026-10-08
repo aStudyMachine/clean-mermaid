@@ -2,11 +2,9 @@
 
 [![English](https://img.shields.io/badge/lang-English-blue)](README.md) [![简体中文](https://img.shields.io/badge/lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README.zh-CN.md)
 
-Clean, **Codex-style** Mermaid diagrams for Obsidian: white card, soft violet nodes, generous
-whitespace, and a floating toolbar — with **ELK layout**, auto-fit, zoom & pan, fullscreen
-view, PNG/SVG export and themable colours.
-
-> Status: `0.1.0` — feature complete, looking for early testers.
+Clean Mermaid renders every ` ```mermaid ` block in Obsidian as a tidy card: white canvas, soft
+violet nodes, generous whitespace and a floating toolbar — with **ELK layout**, auto-fit, zoom &
+pan, fullscreen view, PNG/SVG export and themable colours.
 
 ## Features
 
@@ -20,8 +18,7 @@ view, PNG/SVG export and themable colours.
   zoomed-in diagram, double-click to reset. Plain scrolling still scrolls the note.
 - **Image preview** — diagrams are displayed as `<img>` (SVG data URL), so Obsidian themes and
   CSS snippets cannot restyle them; what you see is what you export.
-- **Export** — download a 2× PNG, an SVG, or copy the image / the Mermaid source from the `⋯`
-  menu. On mobile the file is saved into your vault next to the active note.
+- **Export** — download a 2× PNG, an SVG, or copy the image / the Mermaid source from the `⋯` menu.
 - **Fullscreen viewer** (`⤢`) — pan, wheel/pinch zoom, fit, 100 %, export.
 - **4 built-in themes** — Clean Light, Clean Dark, Neutral, GitHub Light — plus **custom themes**
   as plain Mermaid `themeVariables` JSON, with validation.
@@ -29,6 +26,44 @@ view, PNG/SVG export and themable colours.
 - **UI language** — the card toolbar, the `⋯` menu, the error card, the fullscreen viewer and every
   notice follow 中文 / English, or Obsidian's own interface language when set to "Auto".
 - **Per-diagram directives** — `%% cm:theme=... %%`, `%% cm:layout=dagre %%`, `%% cm:plain %%`.
+
+## Rendering comparison
+
+Every pair below is the same diagram source. **Left** is this plugin with its factory defaults (ELK
+layout, Clean Light theme, card). **Right** is Obsidian's own renderer — the mermaid 11.13.0 build
+shipped inside Obsidian 1.14.4, initialised with Obsidian's own arguments (mermaid's default theme,
+no `layout` key, so Dagre). Both sides are displayed at the same width; the plugin auto-fits while
+Obsidian pins flowcharts to the reading-column width, so absolute pixel size is not part of the claim.
+
+Both panels are generated from the diagram sources in `tests/browser/capture-diagrams.ts` by a
+maintainer script — nothing here is hand-edited or retouched.
+
+### Flowchart — layout engine
+
+| Clean Mermaid (ELK) | Obsidian native (Dagre) |
+| --- | --- |
+| <img src="images/compare-build-pipeline-plugin.png" alt="Build-pipeline flowchart rendered by Clean Mermaid with ELK: orthogonal edges routed around the canvas, evenly sized nodes" width="300" /> | <img src="images/compare-build-pipeline-native.png" alt="The same flowchart rendered by Obsidian's built-in Mermaid with Dagre: curved edges, tighter columns" width="300" /> |
+
+### State diagram — spacing and edge routing
+
+| Clean Mermaid (ELK) | Obsidian native (Dagre) |
+| --- | --- |
+| <img src="images/compare-order-state-plugin.png" alt="Order state diagram rendered by Clean Mermaid: self-loop and transition labels kept inside the canvas" width="300" /> | <img src="images/compare-order-state-native.png" alt="The same state diagram rendered by Obsidian's built-in Mermaid: curved edges, one label overflows the canvas" width="300" /> |
+
+### ER diagram — entity boxes
+
+| Clean Mermaid (ELK) | Obsidian native (Dagre) |
+| --- | --- |
+| <img src="images/compare-blog-er-plugin.png" alt="Three-table ER diagram rendered by Clean Mermaid" width="250" /> | <img src="images/compare-blog-er-native.png" alt="The same ER diagram rendered by Obsidian's built-in Mermaid" width="250" /> |
+
+### Sequence diagram — colours only
+
+ELK does not drive sequence diagrams, so the layout is identical on both sides; only the theme and
+typography differ. Kept here so the comparison does not overstate what the layout engine changes.
+
+| Clean Mermaid | Obsidian native |
+| --- | --- |
+| <img src="images/compare-login-sequence-plugin.png" alt="Login sequence diagram rendered by Clean Mermaid" width="420" /> | <img src="images/compare-login-sequence-native.png" alt="The same sequence diagram rendered by Obsidian's built-in Mermaid" width="420" /> |
 
 ## Installation
 
@@ -95,7 +130,7 @@ prepends its configuration, so the values you write later take precedence.
 
 | Group | Options |
 | --- | --- |
-| General | Plugin interface language (card toolbar, `⋯` menu, error card, viewer, notices): follow Obsidian automatically, 中文 or English |
+| *(no heading, at the top)* | Plugin interface language (card toolbar, `⋯` menu, error card, viewer, notices): follow Obsidian automatically, 中文 or English |
 | Appearance | Light/dark theme, follow Obsidian appearance, fixed theme |
 | Layout | Layout engine (ELK/Dagre), ELK `mergeEdges`, ELK `nodePlacementStrategy`, auto-fit mode, max upscale, max height |
 | Interaction | Ctrl/Cmd + scroll zoom, drag to pan, toolbar visibility, double-click reset |
@@ -117,8 +152,11 @@ prepends its configuration, so the values you write later take precedence.
   Sequence, pie, gantt and similar diagrams use their own layout and are unaffected.
 - **Other mermaid plugins.** Only enable **one** plugin that takes over ` ```mermaid ` blocks.
   If another renderer is detected, Clean Mermaid shows a one-time notice.
-- **Mobile.** Rendering and touch gestures work; exports are saved into the vault instead of being
-  downloaded.
+- **Desktop only.** `manifest.json` declares `isDesktopOnly`, so Obsidian mobile does not load the
+  plugin; exports always use the browser download.
+- **Tested Obsidian version.** `minAppVersion` is `1.14.4` — the only build this takeover has been
+  verified against. Live preview relies on undocumented Obsidian selectors and hooks, so older
+  builds are not promised to work; see [docs/obsidian-internals.md](docs/obsidian-internals.md).
 - **Disabling** the plugin restores Obsidian's own Mermaid rendering; nothing is patched globally.
 
 ## Development
@@ -133,7 +171,7 @@ src/
   themes.ts           built-in themes, custom theme parsing/resolution
   fit.ts              pure auto-fit math
   viewer.ts           fullscreen pan/zoom modal
-  export.ts           PNG/SVG/clipboard/mobile-save helpers
+  export.ts           PNG/SVG/clipboard export helpers
   i18n.ts             language detection + the bilingual picker used by every label
   settings.ts         settings model + settings tab
 tests/                vitest unit tests for the pure modules, plus tests/browser/ harnesses
@@ -155,6 +193,9 @@ own registry (a full path works too, for a vault you have not opened in Obsidian
 ## License
 
 [MIT](LICENSE) © Clean Mermaid contributors
+
+`main.js` bundles mermaid and its dependencies — their licences are listed in
+[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
 ---
 

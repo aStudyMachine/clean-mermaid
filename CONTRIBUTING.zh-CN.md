@@ -7,7 +7,7 @@
 ## 环境要求
 
 - Node.js 18 或更高版本，以及 npm（开发环境为 Node 24 / npm 11）
-- 手动测试需要 Obsidian 桌面端
+- 手动测试需要 Obsidian 桌面端 —— 插件声明 `isDesktopOnly: true`，移动端既不支持也不测
 
 ## 本地准备
 
@@ -53,12 +53,14 @@ gitignore，照 `local-env.example.md` 复制一份填写），不要写进任�
 | `src/themes.ts` | 内置主题、自定义主题解析与校验、明暗主题选择 |
 | `src/fit.ts` | 纯函数自适应计算（不依赖 Obsidian，便于单测） |
 | `src/viewer.ts` | 全屏查看器（缩放、平移、捏合、适应、导出） |
-| `src/export.ts` | PNG 栅格化、SVG 输出、剪贴板、移动端「保存进 vault」降级 |
+| `src/export.ts` | PNG 栅格化、SVG 输出、剪贴板 |
 | `src/i18n.ts` | 语言检测（`auto` 跟随 Obsidian）与插件所有界面文案共用的中英取词 |
 | `src/settings.ts` | 设置模型与设置面板（含自定义主题 JSON 编辑器与界面语言选项） |
 | `styles.css` | 全部样式，类名以 `cm-` 命名空间；明暗通过 `body.theme-dark` 区分 |
 | `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`scripts/resolve-vault.mjs`） |
-| `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量） |
+| `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量），以及 README 对比图的捕获链路（`capture-*`、`native-config.ts`）—— 维护者本机的素材工具，不属于贡献流程 |
+| `images/` | README 对比图的 PNG，由上面那条链路生成 |
+| `scripts/extract-obsidian-mermaid.mjs` | 从 Obsidian 的 `app.asar` 里取出它自带的 mermaid 构建，供 README 对比图的「原生」一侧使用 —— 维护者本机用，见 `AGENTS.md` |
 | `scripts/deploy.mjs` | 一键部署：单测 → 构建 → 把三个产物拷进指定的一个或多个库（`--no-check` / `--restart`） |
 | `scripts/resolve-vault.mjs` | 库名 ↔ 路径的换算（读 Obsidian vault 注册表；纯判定与文件读取分开，便于单测） |
 | `scripts/scan-asar.mjs` | Obsidian 升级后重新核对 `docs/obsidian-internals.md` 里的逆向结论 |

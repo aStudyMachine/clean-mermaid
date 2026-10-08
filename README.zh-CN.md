@@ -2,10 +2,9 @@
 
 [![English](https://img.shields.io/badge/lang-English-blue)](README.md) [![简体中文](https://img.shields.io/badge/lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README.zh-CN.md)
 
-为 Obsidian 提供干净、**Codex 风格**的 Mermaid 图表：白色卡片、淡紫节点、充足留白与悬浮工具条
-—— 支持 **ELK 布局**、自适应缩放、缩放与平移、全屏查看、PNG/SVG 导出以及可自定义的主题配色。
-
-> 状态：`0.1.0` —— 功能完整，正在寻找早期试用者。
+Clean Mermaid 把 vault 里每个 ` ```mermaid ` 代码块渲染成一张干净的卡片：白色画布、淡紫节点、
+充足留白与悬浮工具条 —— 支持 **ELK 布局**、自适应缩放、缩放与平移、全屏查看、PNG/SVG 导出
+以及可自定义的主题配色。
 
 ## 功能特性
 
@@ -18,8 +17,7 @@
   普通滚轮仍然照常滚动笔记。
 - **图片化预览** —— 图表以 `<img>`（SVG data URL）显示，Obsidian 主题与 CSS 片段无法改变其样式，
   所见即所得。
-- **导出** —— 在 `⋯` 菜单中下载 2× PNG、SVG，或复制图片 / 复制 Mermaid 源码；移动端会保存到
-  当前笔记所在目录。
+- **导出** —— 在 `⋯` 菜单中下载 2× PNG、SVG，或复制图片 / 复制 Mermaid 源码。
 - **全屏查看器**（`⤢`）—— 平移、滚轮/双指缩放、适应、100%、导出。
 - **4 个内置主题** —— Clean Light、Clean Dark、Neutral、GitHub Light；另支持以标准 Mermaid
   `themeVariables` JSON 编写的**自定义主题**，并带校验。
@@ -27,6 +25,41 @@
 - **界面语言** —— 卡片工具条、`⋯` 菜单、错误卡片、全屏查看器与提示等全部文案跟随中文 / English，
   选「自动」时跟随 Obsidian 的界面语言。
 - **单图指令** —— `%% cm:theme=... %%`、`%% cm:layout=dagre %%`、`%% cm:plain %%`。
+
+## 渲染对比
+
+下面每一组都是同一份图表源码。**左**侧是本插件的出厂默认（ELK 布局、Clean Light 主题、卡片）；
+**右**侧是 Obsidian 自己的渲染 —— Obsidian 1.14.4 内置的那份 mermaid 11.13.0，并按 Obsidian 自己的
+参数初始化（mermaid 默认主题、不写 `layout` 键，因此走 Dagre）。两侧按同一显示宽度呈现：插件做自适应，
+Obsidian 则把流程图锁在阅读列宽度上，所以像素尺寸本身不在对比结论里。
+
+两侧都由 `tests/browser/capture-diagrams.ts` 里的同一份源码经维护者本机脚本生成，没有手工修图。
+
+### 流程图 —— 布局引擎
+
+| Clean Mermaid（ELK） | Obsidian 原生（Dagre） |
+| --- | --- |
+| <img src="images/compare-build-pipeline-plugin.png" alt="Clean Mermaid 以 ELK 渲染的构建流程图：折线绕行、节点尺寸一致" width="300" /> | <img src="images/compare-build-pipeline-native.png" alt="同一张流程图在 Obsidian 内置 Mermaid 下的 Dagre 渲染：曲线连线、排布更紧" width="300" /> |
+
+### 状态图 —— 间距与连线走向
+
+| Clean Mermaid（ELK） | Obsidian 原生（Dagre） |
+| --- | --- |
+| <img src="images/compare-order-state-plugin.png" alt="Clean Mermaid 渲染的订单状态图：自环与转移标签都在画布内" width="300" /> | <img src="images/compare-order-state-native.png" alt="同一张状态图在 Obsidian 内置 Mermaid 下的渲染：曲线连线，一个标签溢出画布" width="300" /> |
+
+### ER 图 —— 实体框
+
+| Clean Mermaid（ELK） | Obsidian 原生（Dagre） |
+| --- | --- |
+| <img src="images/compare-blog-er-plugin.png" alt="Clean Mermaid 渲染的三表 ER 图" width="250" /> | <img src="images/compare-blog-er-native.png" alt="同一张三表 ER 图在 Obsidian 内置 Mermaid 下的渲染" width="250" /> |
+
+### 时序图 —— 只有配色不同
+
+时序图不由 ELK 驱动，两侧布局完全一致，差别只在主题配色与字体。放进来是为了不把布局引擎的作用说满。
+
+| Clean Mermaid | Obsidian 原生 |
+| --- | --- |
+| <img src="images/compare-login-sequence-plugin.png" alt="Clean Mermaid 渲染的登录时序图" width="420" /> | <img src="images/compare-login-sequence-native.png" alt="同一张登录时序图在 Obsidian 内置 Mermaid 下的渲染" width="420" /> |
 
 ## 安装
 
@@ -93,7 +126,7 @@ flowchart LR
 
 | 分组 | 选项 |
 | --- | --- |
-| 通用 | 插件界面语言（卡片工具条、`⋯` 菜单、错误卡片、全屏查看器与提示）：自动跟随 Obsidian、中文或 English |
+| *（置顶，无分组标题）* | 插件界面语言（卡片工具条、`⋯` 菜单、错误卡片、全屏查看器与提示）：自动跟随 Obsidian、中文或 English |
 | 外观 | 浅色/深色主题、跟随 Obsidian 明暗、固定主题 |
 | 布局 | 布局引擎（ELK/Dagre）、ELK `mergeEdges`、ELK `nodePlacementStrategy`、自适应方式、最大放大倍率、最大高度 |
 | 交互 | Ctrl/Cmd + 滚轮缩放、拖拽平移、工具条显示方式、双击复位 |
@@ -113,7 +146,11 @@ flowchart LR
   甘特图等使用自有布局，不受影响。
 - **与其他 mermaid 插件共存。** 请只启用**一个**接管 ` ```mermaid ` 的插件；若检测到其它渲染器，
   Clean Mermaid 会给出一次提示。
-- **移动端。** 渲染与触屏手势均可用；导出改为保存进 vault，而非浏览器下载。
+- **仅桌面。** `manifest.json` 声明 `isDesktopOnly`，Obsidian 移动端不会加载本插件；导出一律走
+  浏览器下载。
+- **实测过的 Obsidian 版本。** `minAppVersion` 为 `1.14.4` —— 接管逻辑只在这个版本实测过；实时
+  预览依赖未公开的 Obsidian 选择器与钩子，因此不承诺更老的版本可用，细节见
+  [docs/obsidian-internals.md](docs/obsidian-internals.md)。
 - **禁用插件**后图表恢复为 Obsidian 自带的 Mermaid 渲染，插件没有对全局做任何改写。
 
 ## 开发
@@ -128,7 +165,7 @@ src/
   themes.ts           内置主题、自定义主题解析与校验
   fit.ts              纯函数自适应计算
   viewer.ts           全屏缩放/平移弹窗
-  export.ts           PNG/SVG/剪贴板/移动端保存
+  export.ts           PNG/SVG/剪贴板导出
   i18n.ts             语言检测与中英取词，供全部界面文案使用
   settings.ts         设置模型与设置面板
 tests/                纯逻辑模块的 vitest 单测；tests/browser/ 为浏览器验证脚本
@@ -149,6 +186,9 @@ vault 路径 —— 部署脚本用 Obsidian 自己的注册表把库名换算�
 ## 许可证
 
 [MIT](LICENSE) © Clean Mermaid contributors
+
+`main.js` 打包了 mermaid 及其依赖，它们的许可见
+[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md)。
 
 ---
 
