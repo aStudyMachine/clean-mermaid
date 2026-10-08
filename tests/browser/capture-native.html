@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Clean Mermaid — capture (Obsidian native)</title>
+		<style>
+			body {
+				font-family: system-ui, sans-serif;
+				margin: 24px;
+				background: #f4f4f5;
+			}
+			h1 {
+				font-size: 18px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Clean Mermaid — capture: Obsidian&rsquo;s own mermaid build with Obsidian&rsquo;s own initialize config</h1>
+		<p>
+			Needs <code>tests/browser/obsidian-mermaid.min.js</code> (run
+			<code>npm run extract-mermaid "&lt;obsidian.asar&gt;")</code>. Open this page while
+			<code>npm run shots</code> is serving; it posts PNGs back to <code>/save</code>.
+		</p>
+		<div id="out">rendering…</div>
+		<script src="./obsidian-mermaid.min.js"></script>
+		<script src="./capture-native.js"></script>
+	</body>
+</html>
