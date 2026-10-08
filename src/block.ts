@@ -1,7 +1,7 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, setIcon } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import { clamp, computeFit, MAX_SCALE, MIN_SCALE } from "./fit";
-import { renderDiagram, svgToDataUrl, type RenderedDiagram } from "./mermaid-runtime";
+import { peekRendered, renderDiagram, svgToDataUrl, type RenderRequest, type RenderedDiagram } from "./mermaid-runtime";
 import { resolveActiveTheme, themeCanvasColor, themeIdentity, type ThemeDefinition } from "./themes";
 import {
 	copyDiagramPng,
@@ -15,8 +15,8 @@ import type { LayoutEngine } from "./settings";
 import { DiagramViewerModal } from "./viewer";
 
 /**
- * One rendered ```mermaid block: renders the diagram, wraps it in the Codex-style card and
- * owns all interactions (auto-fit, zoom, pan, toolbar, exports).
+ * 一个已渲染的 ```mermaid 块：负责渲染图表、套上 Codex 风格卡片，并持有全部交互
+ * （自适应居中、缩放、平移、工具条、导出）。
  */
 export class CleanMermaidBlock extends MarkdownRenderChild {
 	private readonly plugin: CleanMermaidPlugin;
@@ -50,7 +50,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	onload(): void {
 		this.containerEl.addClass("cm-host");
 		if (this.containerEl.querySelector(".mermaid")) {
-			// The block already contains a mermaid container: something else renders it too.
+			// 容器里已经有一个 mermaid 容器：说明还有别的东西也在渲染它。
 			this.plugin.warnAboutConflict();
 		}
 		this.plugin.registerBlock(this);
@@ -66,7 +66,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		this.containerEl.empty();
 	}
 
-	/** Re-renders when the appearance/theme changed, otherwise just re-fits. */
+	/** 外观 / 主题变了才重渲染，否则只重新适配尺寸。 */
 	async refresh(force = false): Promise<void> {
 		const settings = this.plugin.settings;
 		const { directives, code } = parseBlockDirectives(this.source, settings.enableDirectives);
@@ -97,24 +97,29 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		this.plainMode = plain;
 
 		const token = ++this.token;
+		const request: RenderRequest = {
+			code,
+			theme,
+			layout,
+			elkMergeEdges: settings.elkMergeEdges,
+			elkNodePlacement: settings.elkNodePlacement,
+			plain,
+		};
+
+		// 命中缓存的图不 await，直接构建：块必须在出现的那一帧就落到最终高度，否则
+		// CodeMirror 会围着它重新测量整篇笔记。
+		const cached = peekRendered(request);
+		if (cached) {
+			this.build(cached, plain);
+			return;
+		}
+
 		try {
-			const rendered = await renderDiagram({
-				code,
-				theme,
-				layout,
-				elkMergeEdges: settings.elkMergeEdges,
-				elkNodePlacement: settings.elkNodePlacement,
-				plain,
-			});
+			const rendered = await renderDiagram(request);
 			if (token !== this.token || !this.containerEl.isConnected) {
 				return;
 			}
-			this.rendered = rendered;
-			if (plain) {
-				this.buildPlainView(rendered);
-			} else {
-				this.buildCard(rendered);
-			}
+			this.build(rendered, plain);
 		} catch (error) {
 			if (token !== this.token) {
 				return;
@@ -122,6 +127,15 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			console.error("[clean-mermaid] failed to render a diagram", error);
 			this.rendered = null;
 			this.showError(error, code);
+		}
+	}
+
+	private build(rendered: RenderedDiagram, plain: boolean): void {
+		this.rendered = rendered;
+		if (plain) {
+			this.buildPlainView(rendered);
+		} else {
+			this.buildCard(rendered);
 		}
 	}
 
@@ -169,7 +183,12 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		this.buildToolbar(stage);
 		this.bindInteractions(canvas);
 		this.observeResize(card);
-		this.scheduleFit();
+		this.removeStrayRenderers();
+		// SVG 自带原始尺寸，所以适配必须在这一步同步做完 —— 先让 CodeMirror 量到原始大小、
+		// 下一帧才改成适配后的大小，笔记就会跳两次。
+		if (!this.applyFit()) {
+			this.scheduleFit();
+		}
 	}
 
 	private buildToolbar(stage: HTMLElement): void {
@@ -234,8 +253,8 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	}
 
 	/**
-	 * Defensive: if Obsidian's built-in renderer (or another plugin) rendered into the same block,
-	 * drop its leftover container so only one diagram is displayed.
+	 * 兜底：若 Obsidian 内置渲染器（或其它插件）在同一个块里渲染过，删掉它留下的容器，
+	 * 保证只显示一张图。
 	 */
 	private removeStrayRenderers(): void {
 		const own = this.containerEl.querySelector(":scope > .cm-block");
@@ -254,7 +273,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			"wheel",
 			(event: WheelEvent) => {
 				if (!this.plugin.settings.wheelZoom || !(event.ctrlKey || event.metaKey)) {
-					// Plain scrolling keeps scrolling the note.
+					// 普通滚轮继续交给笔记正常滚动。
 					return;
 				}
 				event.preventDefault();
@@ -301,7 +320,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			try {
 				canvas.releasePointerCapture(event.pointerId);
 			} catch {
-				// Pointer capture may already be released.
+				// 指针捕获可能已经释放了。
 			}
 		};
 		this.registerDomEvent(canvas, "pointerup", endDrag);
@@ -354,15 +373,16 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		attempt(3);
 	}
 
-	private applyFit(): void {
+	/** 按块宽给卡片定尺寸；宽度还量不出来时返回 false。 */
+	private applyFit(): boolean {
 		const canvas = this.canvasEl;
 		if (!canvas || !this.rendered) {
-			return;
+			return false;
 		}
 		const settings = this.plugin.settings;
 		const containerWidth = canvas.clientWidth || this.containerEl.clientWidth;
 		if (!containerWidth) {
-			return;
+			return false;
 		}
 		this.zoomState.manual = false;
 		this.zoomState.tx = 0;
@@ -377,6 +397,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			maxHeightRatio: settings.maxHeightVh / 100,
 		});
 		this.applyTransform();
+		return true;
 	}
 
 	private applyTransform(): void {

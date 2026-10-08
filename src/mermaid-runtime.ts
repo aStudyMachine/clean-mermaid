@@ -3,14 +3,14 @@ import { SYSTEM_FONT_STACK, themeIdentity, type ThemeDefinition } from "./themes
 import type { ElkMergeEdges, ElkNodePlacement, LayoutEngine } from "./settings";
 
 export interface RenderRequest {
-	/** Mermaid source (already stripped of `%% cm: %%` directives). */
+	/** mermaid 源码（已剥掉 `%% cm: %%` 指令）。 */
 	code: string;
-	/** Theme to inject; `null` renders with mermaid's own default look (plain mode). */
+	/** 要注入的主题；`null` 走 mermaid 自带默认外观（plain 模式）。 */
 	theme: ThemeDefinition | null;
 	layout: LayoutEngine;
 	elkMergeEdges: ElkMergeEdges;
 	elkNodePlacement: ElkNodePlacement;
-	/** Plain mode renders mermaid's stock theme/dagre instead of the plugin styling. */
+	/** plain 模式用 mermaid 自带的 theme/dagre，不加插件样式。 */
 	plain: boolean;
 }
 
@@ -51,7 +51,7 @@ function buildInitConfig(request: RenderRequest): Record<string, unknown> {
 	const init: Record<string, unknown> = {};
 
 	if (request.plain || !request.theme) {
-		// Stock mermaid appearance (what Obsidian would roughly show).
+		// mermaid 原生外观（大致就是 Obsidian 默认会显示的样子）。
 		init.theme = request.plain && isDarkDocument() ? "dark" : "default";
 		init.layout = "dagre";
 		return init;
@@ -83,18 +83,18 @@ function isDarkDocument(): boolean {
 }
 
 /**
- * Injects our configuration as an `%%{init: ...}%%` directive.
+ * 把我们的配置作为 `%%{init: ...}%%` 指令注入。
  *
- * Why a directive and not YAML frontmatter:
- * mermaid merges all init directives (later ones win) and then applies them on top of the
- * frontmatter config, so a directive is the only injection point that never collides with a
- * user's own frontmatter — and any directive the user writes themselves still wins over ours.
+ * 为什么用指令而不是 YAML frontmatter：
+ * mermaid 会先合并所有 init 指令（后出现的胜出），再叠在 frontmatter 配置之上，
+ * 所以指令是唯一不会和用户自己的 frontmatter 冲突的注入点 ——
+ * 而且用户自己写的指令仍然压得过我们这条。
  */
 function injectInitDirective(source: string, init: Record<string, unknown>): string {
 	const directive = `%%{init: ${JSON.stringify(init)}}%%`;
 	const lines = source.split(/\r?\n/);
 
-	// Keep user frontmatter first; insert right after its closing marker.
+	// 用户的 frontmatter 保持在最前，指令插在它的结束标记之后。
 	if (/^\s*---\s*$/.test(lines[0] ?? "")) {
 		for (let i = 1; i < lines.length; i++) {
 			if (/^\s*---\s*$/.test(lines[i])) {
@@ -106,7 +106,7 @@ function injectInitDirective(source: string, init: Record<string, unknown>): str
 	return `${directive}\n${source}`;
 }
 
-/** Forces explicit pixel dimensions on the SVG root so it behaves predictably inside an <img>. */
+/** 给 SVG 根节点强制写上像素尺寸，放进 <img> 里表现才可预期。 */
 function normalizeSvg(svg: string): RenderedDiagram {
 	const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
 	const el = doc.documentElement;
@@ -147,8 +147,8 @@ const cache = new Map<string, RenderedDiagram>();
 const CACHE_LIMIT = 100;
 
 function cacheKey(request: RenderRequest): string {
-	// Plain mode bakes the document appearance into the SVG (see buildInitConfig), so the
-	// appearance belongs in the key — otherwise a light/dark switch replays the other look.
+	// plain 模式会把当前文档外观烘进 SVG（见 buildInitConfig），所以外观要进 key ——
+	// 否则切换明暗时会重放出另一套样子。
 	return [
 		request.plain ? `plain:${isDarkDocument() ? "dark" : "light"}` : themeIdentity(request.theme),
 		request.layout,
@@ -162,18 +162,34 @@ export function svgToDataUrl(svg: string): string {
 	return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+/**
+ * 同步查缓存。
+ *
+ * 要把图表放进编辑器已测量过的 DOM 的调用方，必须让结果和 DOM 写入落在同一帧 ——
+ * await 渲染会让块在 CodeMirror 记下高度之后才变高，从而触发视图重新测量
+ * （滚动时笔记会明显跳动）。
+ */
+export function peekRendered(request: RenderRequest): RenderedDiagram | null {
+	const key = cacheKey(request);
+	const cached = cache.get(key);
+	if (!cached) {
+		return null;
+	}
+	// 刷新 LRU 位置。
+	cache.delete(key);
+	cache.set(key, cached);
+	return cached;
+}
+
 export async function renderDiagram(request: RenderRequest): Promise<RenderedDiagram> {
 	ensureInitialized();
 
-	const key = cacheKey(request);
-	const cached = cache.get(key);
+	const cached = peekRendered(request);
 	if (cached) {
-		// Refresh LRU position.
-		cache.delete(key);
-		cache.set(key, cached);
 		return cached;
 	}
 
+	const key = cacheKey(request);
 	const id = `cm-${++renderSeq}-${Date.now().toString(36)}`;
 	const code = injectInitDirective(request.code, buildInitConfig(request));
 
@@ -182,7 +198,7 @@ export async function renderDiagram(request: RenderRequest): Promise<RenderedDia
 		const result = await mermaid.render(id, code);
 		svg = result.svg;
 	} finally {
-		// mermaid leaves a temporary node behind when rendering throws.
+		// mermaid 渲染抛错时会留下一个临时节点。
 		document.getElementById(`d${id}`)?.remove();
 	}
 

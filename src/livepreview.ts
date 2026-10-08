@@ -3,22 +3,22 @@ import type CleanMermaidPlugin from "./main";
 import { CleanMermaidBlock } from "./block";
 
 /**
- * Live Preview takeover.
+ * 实时预览的接管方案。
  *
- * Obsidian's live preview renders ```mermaid blocks with a hard-coded core renderer
- * (`if (lang === "mermaid") { ... }` in the code block widget) that never consults the
- * `registerMarkdownCodeBlockProcessor` registry — so a plugin cannot take over mermaid in the
- * editor through the public processor API. Instead we watch the rendered widgets, read the
- * diagram source from the editor state and swap the core output for our card.
+ * Obsidian 的实时预览用写死的内置渲染器渲染 ```mermaid 块（代码块部件里的
+ * `if (lang === "mermaid") { ... }`），它从不查
+ * `registerMarkdownCodeBlockProcessor` 注册表 —— 所以插件不可能靠公开处理器 API
+ * 在编辑器里接管 mermaid。只能反过来：监听已渲染的部件，从编辑器状态读出图表源码，
+ * 把官方输出换成我们的卡片。
  */
 
 const WIDGET_SELECTOR = ".cm-embed-block.cm-lang-mermaid";
 const HOST_CLASS = "cm-live-host";
 const HIDDEN_CLASS = "cm-core-hidden";
 
-/** Opening fence with an optional info string, e.g. "```mermaid". */
+/** 起始围栏，可带 info string，如 "```mermaid"。 */
 const FENCE_PATTERN = /^\s*(`{3,}|~{3,})\s*([A-Za-z0-9_+-]*)/;
-/** Closing fence: only the fence characters, nothing else on the line. */
+/** 结束围栏：整行只有围栏字符，没有别的内容。 */
 const CLOSING_FENCE_PATTERN = /^\s*(`{3,}|~{3,})\s*$/;
 
 interface ManagedEntry {
@@ -46,6 +46,16 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 				}
 			}
 
+			/**
+			 * CodeMirror 重绘完 DOM、仍在同一次测量流程里时调我们（内部钩子，鸭子类型：有这个方法就调）。
+			 * 接管必须发生在这一刻：滚动时复用的部件进场后官方内容还是旧高度、我们的卡片要在 CodeMirror
+			 * 记录它之前就先摆好，否则它会先量到错的尺寸，下一帧再靠滚动锚点补偿 —— 表现就是抖一下。
+			 * rAF 那条路径保留，作为拿不到这个钩子时的兜底。
+			 */
+			docViewUpdate(): void {
+				this.scan();
+			}
+
 			destroy(): void {
 				this.destroyed = true;
 				this.observer.disconnect();
@@ -69,7 +79,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			}
 
 			private scan(): void {
-				// Drop blocks whose widget has been recycled by CodeMirror.
+				// 清掉部件已被 CodeMirror 回收掉的块。
 				for (const [widget, entry] of Array.from(this.managed)) {
 					if (!widget.isConnected) {
 						this.dispose(widget, entry);
@@ -84,9 +94,9 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			}
 
 			private ensureCard(widget: HTMLElement): void {
-				// Obsidian asks the user to trust the vault before rendering mermaid diagrams
-				// (`mermaid-vault-trust` in local storage). Keep that guard intact: never render
-				// behind it, in either of its two shapes.
+				// Obsidian 渲染 mermaid 图之前会先让用户信任该 vault
+				// （local storage 里的 `mermaid-vault-trust`）。这道闸门保持原样：两种形态下
+				// 都不要绕过它去渲染。
 				if (!this.isVaultTrusted() || widget.querySelector(".mermaid-wrapper.is-guarded")) {
 					this.releaseWidget(widget);
 					return;
@@ -104,7 +114,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 
 				const current = this.managed.get(widget);
 				if (current && current.source === source && widget.querySelector(`:scope > .${HOST_CLASS}`)) {
-					// Core may have re-rendered inside the same widget; keep it hidden.
+					// 官方可能已在同一个部件里重渲染过，继续把它藏着。
 					this.hideCoreOutput(widget);
 					return;
 				}
@@ -123,7 +133,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 				this.hideCoreOutput(widget);
 			}
 
-			/** Mirrors Obsidian's own check (`true === loadLocalStorage("mermaid-vault-trust")`). */
+			/** 照搬 Obsidian 自己的判断（`true === loadLocalStorage("mermaid-vault-trust")`）。 */
 			private isVaultTrusted(): boolean {
 				try {
 					return plugin.app.loadLocalStorage("mermaid-vault-trust") === true;
@@ -145,6 +155,12 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			}
 
 			private hideCoreOutput(widget: HTMLElement): void {
+				// 只在卡片真正建好之后才做：首次渲染还在进行时，这个块的高度是靠官方输出撑着的，
+				// 此时折叠它会让笔记跳两次而不是一次。
+				// CSS 规则用的也是同一个条件。
+				if (!widget.querySelector(`:scope > .${HOST_CLASS} > .cm-block`)) {
+					return;
+				}
 				for (const child of Array.from(widget.children)) {
 					if (!child.classList.contains(HOST_CLASS)) {
 						child.addClass(HIDDEN_CLASS);
@@ -153,6 +169,11 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			}
 
 			private dispose(widget: HTMLElement, entry: ManagedEntry): void {
+				// 隐藏类要一起交还给官方：CodeMirror 复用过的 DOM 会带着它回来，那时部件高度是 0，
+				// 官方内容撑起来的高度被我们抹掉了。
+				for (const child of Array.from(widget.children)) {
+					child.removeClass(HIDDEN_CLASS);
+				}
 				try {
 					entry.block.unload();
 				} catch (error) {
@@ -161,7 +182,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 				widget.querySelector(`:scope > .${HOST_CLASS}`)?.remove();
 			}
 
-			/** Reads the fenced block that contains this widget straight from the editor state. */
+			/** 直接从编辑器状态读出包含这个部件的围栏块源码。 */
 			private findSource(widget: HTMLElement): string | null {
 				let offset: number;
 				try {
@@ -200,7 +221,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 					}
 					const start = doc.line(openLine).to;
 					const end = doc.line(n).from;
-					// Sanity check: the widget must really sit inside this block.
+					// 合理性校验：部件确实落在这个块里面。
 					if (offset < doc.line(openLine).from - 1 || offset > doc.line(n).to + 1) {
 						return null;
 					}

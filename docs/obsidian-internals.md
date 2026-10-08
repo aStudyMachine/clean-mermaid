@@ -17,10 +17,25 @@
    随后对 mermaid `detach` 掉 `<pre>` 并直接调官方渲染器；`canRenderLang()` 对 `mermaid` 恒为 true，
    注册表对 mermaid 永远不会被查询。所以编辑视图只能像 `src/livepreview.ts` 那样事后替换部件内容。
 
-## 由上面推出的三个实现约束
+## 由上面推出的实现约束
 
 - **保留官方渲染的 DOM**：官方用 recycler 把已渲染的 `.mermaid` 容器与源块对应起来（重渲染时复用）；
   我们只给官方输出加 `.cm-core-hidden` 隐藏，不删除它。
+- **隐藏类必须在放手时归还**：复用的是同一份 DOM，`.cm-core-hidden` 会跟着部件回到下一次接管 —— 那时
+  部件进场高度是 0（官方撑起来的高度被我们抹掉了），卡片再撑回 1300 就是跨帧跳变。`dispose()` 里
+  逐个 `removeClass` 交还，别让路过的代码只记得删 host。
+- **接管要发生在 CodeMirror 的重绘阶段**：`docViewUpdate` 是 `@codemirror/view` 的内部钩子，
+  `measure()` 里 `(g = this.docView.update(v)) && this.docViewUpdate()` —— 插件值上有这个方法就被调用
+  （Obsidian 1.14.4 的 bundle 已核实）。滚动时 `onScrollChanged` 会**同步**跑 `measure()`，它先量部件、
+  再重绘；等我们的 rAF 排上去已经慢了一帧：错尺寸被记进高度表，下一帧靠滚动锚点补偿，表现就是抖一下。
+  `src/livepreview.ts` 同时实现 `docViewUpdate`（同帧摆好卡片）和 rAF（拿不到钩子时的兜底）。升级
+  Obsidian 后若抖动复发或控制台重现 `Measure loop restarted` / `Viewport failed to stabilize`，
+  第一件事是确认这个钩子还在、名字没变。
+- **官方输出在实时预览里的直接子节点是 `.mermaid`，不是 `.mermaid-wrapper`**（后者只在未信任守卫那条
+  分支出现）。部件的另一个直接子节点是 `.embed-actions`（Obsidian 的悬浮操作条），我们一并隐藏：
+  卡片自带 `⋯ / ⤢` 工具条，两套并排会打架。`styles.css` 里那条 `:has(> .cm-live-host > .cm-block)`
+  规则点名的是 `.mermaid-wrapper, .mermaid`。没有写成「除了 host 全隐藏」那种通配，是为了不把这个
+  决定变成隐式的：`.embed-actions` 目前由 `hideCoreOutput()` 显式隐藏，改动前先看这条。
 - **源码从编辑器状态取**：编辑视图里官方的 `<code>` 元素已被 detach，拿不到文本；`livepreview.ts` 用
   `view.posAtDOM(widget)` 定位，向上找 ```` ```mermaid ```` 围栏、向下找闭合围栏，再从文档里切片取源码，
   并对偏移做边界校验；取不到就放弃接管（保持官方渲染，安全降级）。

@@ -1,7 +1,7 @@
-/* Clean Mermaid — Codex-style diagram cards.
-   All selectors are namespaced with the `cm-` prefix. */
+/* Clean Mermaid — Codex 风格的图表卡片。
+   所有选择器都带 `cm-` 前缀做命名空间。 */
 
-/* ---------------------------------------------------------------- host block */
+/* ---------------------------------------------------------------- 宿主节点 */
 
 .cm-host {
 	padding: 0;
@@ -12,7 +12,7 @@
 	margin: 12px 0;
 }
 
-/* ------------------------------------------------------------------- card */
+/* ------------------------------------------------------------------- 卡片 */
 
 .cm-card {
 	position: relative;
@@ -26,7 +26,7 @@ body.theme-dark .cm-card {
 	border-color: rgba(255, 255, 255, 0.08);
 }
 
-/* ------------------------------------------------------------------ canvas */
+/* ------------------------------------------------------------------ 画布 */
 
 .cm-canvas {
 	position: relative;
@@ -54,7 +54,7 @@ body.theme-dark .cm-card {
 	cursor: grabbing;
 }
 
-/* ----------------------------------------------------------------- toolbar */
+/* ----------------------------------------------------------------- 工具条 */
 
 .cm-toolbar {
 	position: absolute;
@@ -103,7 +103,7 @@ body.theme-dark .cm-card {
 	font-size: var(--font-ui-smaller);
 }
 
-/* -------------------------------------------------------------------- menu */
+/* -------------------------------------------------------------------- 菜单 */
 
 .cm-menu {
 	position: absolute;
@@ -150,7 +150,7 @@ body.theme-dark .cm-card {
 	height: 14px;
 }
 
-/* --------------------------------------------------------------- zoom badge */
+/* --------------------------------------------------------------- 缩放徽标 */
 
 .cm-zoom-badge {
 	position: absolute;
@@ -170,12 +170,20 @@ body.theme-dark .cm-card {
 	display: none !important;
 }
 
-/* Live preview: Obsidian's own rendered output, hidden in favour of our card. */
+/* 实时预览：Obsidian 自己渲染出来的输出，为了让位给卡片而隐藏。 */
 .cm-core-hidden {
 	display: none !important;
 }
 
-/* ------------------------------------------------------------- plain / error */
+/* 核心渲染器会异步往同一个部件里继续追加输出，一次性隐藏子元素并不够 —— 从我们的卡片存在那一刻
+   起就按规则把官方输出按住。这里只点名列出官方容器，免得连 Obsidian 自己的部件级 UI（例如
+   `.embed-actions`）一起挡掉。等到有了内容才隐藏是刻意为之：首次渲染还在进行时，正是官方输出在
+   撑这个块的高度，此刻塌成 0 会让笔记跳两次而不是一次。信任守卫 `.is-guarded` 保持可见。 */
+.cm-embed-block.cm-lang-mermaid:has(> .cm-live-host > .cm-block) > :is(.mermaid-wrapper, .mermaid):not(.is-guarded) {
+	display: none !important;
+}
+
+/* ------------------------------------------------------------- plain / 错误 */
 
 .cm-plain {
 	display: flex;
@@ -215,7 +223,7 @@ body.theme-dark .cm-card {
 	font-size: var(--font-ui-smaller);
 }
 
-/* ------------------------------------------------------------------- modal */
+/* ------------------------------------------------------------------- 模态框 */
 
 .modal.cm-modal {
 	width: min(1100px, 92vw);
@@ -281,7 +289,7 @@ body.theme-dark .cm-card {
 	-webkit-user-drag: none;
 }
 
-/* ---------------------------------------------------------------- settings */
+/* ---------------------------------------------------------------- 设置页 */
 
 .cm-theme-list {
 	display: flex;
