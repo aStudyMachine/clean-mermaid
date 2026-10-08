@@ -25,16 +25,22 @@ Browser harnesses (real mermaid rendering, needs a browser, not Obsidian):
 `http://localhost:8787/cache.html` (theme/cache invariants). Run these before merging a mermaid
 version bump.
 
-Deploy the build into a vault for testing — **never hardcode a vault path**:
+One-command deploy: unit tests → build → copy the artifacts into the vaults you name. **Never hardcode
+a vault path.** Vault names are resolved through Obsidian's own registry (`%APPDATA%/obsidian/obsidian.json`
+and its per-platform equivalents), where the name is simply the last segment of the path:
 
 ```bash
+npm run deploy -- <vault-name> [<vault-name> …]   # several vaults in one run
+npm run deploy -- <vault-name> --no-check         # skip tests and build, just copy
+npm run deploy -- <vault-name> --restart          # restart Obsidian afterwards (Windows only)
+npm run deploy -- "<path-to-your-vault>"          # vault not opened in Obsidian yet
 VAULT="<path-to-your-vault>" npm run deploy
-# or
-npm run deploy -- "<path-to-your-vault>"
+npm run deploy                                    # no arguments: list the available names
 ```
 
-Then reload the plugin in Obsidian (*Settings → Community plugins → reload*); plugins are not
-hot-reloaded.
+Every target is resolved before anything is built, so a typo costs nothing. Then reload the plugin in
+Obsidian (*Settings → Community plugins → reload*, or `Ctrl+P → Reload plugin without saving`); plugins
+are not hot-reloaded.
 
 Keep your machine's own facts — vault paths, Obsidian version, tool locations — in `.local/env.md`
 (the whole directory is git-ignored; copy `local-env.example.md` to start). Never write them into a
@@ -56,9 +62,10 @@ committed file.
 | `src/i18n.ts` | Language detection (`auto` follows Obsidian) and the bilingual picker behind every label the plugin draws |
 | `src/settings.ts` | Settings model + settings tab (custom theme JSON editor, UI language option) |
 | `styles.css` | All styles, namespaced with the `cm-` prefix; light/dark via `body.theme-dark` |
-| `tests/` | Vitest unit tests for the pure modules (`directives.ts`, `fit.ts`, `themes.ts`, `i18n.ts`) |
+| `tests/` | Vitest unit tests for the pure modules (`directives.ts`, `fit.ts`, `themes.ts`, `i18n.ts`, `scripts/resolve-vault.mjs`) |
 | `tests/browser/` | Browser harnesses for real mermaid rendering (theme × layout output, theme/cache invariants) |
-| `scripts/deploy.mjs` | Copies the three artifacts into a vault given by `VAULT` or a CLI argument |
+| `scripts/deploy.mjs` | One-command deploy: tests → build → copy the three artifacts into one or more named vaults (`--no-check`, `--restart`) |
+| `scripts/resolve-vault.mjs` | Vault name ↔ path resolution via Obsidian's registry (pure matching kept separate from file reads, so it is unit-testable) |
 | `scripts/scan-asar.mjs` | Re-checks the Obsidian internals behind `docs/obsidian-internals.md` after an upgrade |
 | `local-env.example.md` | Template for `.local/env.md` — where each machine records its own paths (never committed) |
 

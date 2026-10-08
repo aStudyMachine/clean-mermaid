@@ -43,7 +43,7 @@ view, PNG/SVG export and themable colours.
 ```bash
 npm install
 npm run build
-VAULT="<path-to-your-vault>" npm run deploy
+npm run deploy -- <vault-name>
 ```
 
 ## Usage
@@ -145,12 +145,12 @@ npm run dev          # esbuild watch build
 npm run build        # type-check + production build (main.js)
 npm test             # unit tests (no Obsidian needed)
 npm run test:browser # browser harnesses for real mermaid rendering
-VAULT="<path>" npm run deploy   # copy the build into a vault for testing
+npm run deploy -- <vault-name>   # tests → build → copy the build into a vault you name
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and the manual acceptance checklist.
-No local vault paths are ever committed — the deploy script takes the vault as an environment
-variable or CLI argument.
+No local vault paths are ever committed — the deploy script resolves the vault name through Obsidian's
+own registry (a full path works too, for a vault you have not opened in Obsidian yet).
 
 ## License
 

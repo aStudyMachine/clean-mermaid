@@ -39,9 +39,12 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 ## 常用命令
 
 - `npm run build`：类型检查（src + tests）+ 生产构建
-- `npm test`：vitest 单测，只覆盖无 Obsidian 依赖的纯模块（`directives` / `fit` / `themes` / `i18n`）
+- `npm test`：vitest 单测，只覆盖无 Obsidian 依赖的纯模块（`directives` / `fit` / `themes` / `i18n`
+  / `scripts/resolve-vault`）
 - `npm run test:browser`：构建并托管 `tests/browser/` 的两个真实渲染验证页（主题 × 布局、主题与缓存
   不变量），升级 mermaid 前必跑
-- `VAULT=<vault 路径> npm run deploy`：把构建产物部署进 vault 测试，之后需在 Obsidian 里重载插件
-  （不会热更新）。改代码阶段只往 `.local/env.md` 里标为「主要 / 次要验收 / 调试」的两个库部署，
-  要换库先问；本机路径一律从 `.local/env.md` 读，不要写进本文件或仓库任何被跟踪的文件。
+- `npm run deploy -- <库名> [<库名> …]`：一键跑「单测 → 构建 → 拷贝产物」，库名由 Obsidian 自己的
+  vault 注册表换算成路径（`--no-check` 只拷现有产物；`--restart` 部署完重启 Obsidian，仅 Windows，
+  会关掉所有库，只在维护者明确要求时用）。目标全部解析成功才开始构建，之后仍需重载插件（不会热更新）。
+  改代码阶段只往 `.local/env.md` 里标为「主要 / 次要验收 / 调试」的两个库部署（库名就是那两行路径的
+  最后一段），要换库先问；本机路径一律从 `.local/env.md` 读，不要写进本文件或仓库任何被跟踪的文件。

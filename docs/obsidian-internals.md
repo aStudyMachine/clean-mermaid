@@ -64,3 +64,11 @@
   `main.js` 数 MB。
 - `securityLevel: "loose"`：与官方渲染行为对齐，保留标签里的 HTML 与链接。
 - `suppressErrorRendering: true`：渲染失败时由我们自己的错误卡片接管，避免官方把错误图塞进 DOM。
+
+## vault 注册表（`scripts/deploy.mjs` 依赖）
+
+Obsidian 在 `<APPDATA>/obsidian/obsidian.json`（Windows；macOS 是 `~/Library/Application Support/…`，
+Linux 是 `~/.config/obsidian/…`）里记着 `{vaults: {<id>: {path, ts, open?}}}`，部署脚本就靠它把「库名」
+换算成本机路径，仓库里因此不需要出现任何路径。这文件不是公开契约：升级 Obsidian 后若部署报「不认识库名」
+而库里明明有，先用 `node scripts/scan-asar.mjs` 之外的最直接办法 —— 打开它看 `vaults` 字段还在不在、
+`path` 是否仍是绝对路径。解析失败时脚本会自动降级成「只接受完整路径 / `VAULT=`」，不会把人堵死。

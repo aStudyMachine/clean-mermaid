@@ -23,15 +23,20 @@ npm run test:watch # 改动后自动重跑相关用例
 `tests/browser/*.js` 并起本地服务，打开 `http://localhost:8787/render.html`（4 套主题 × 2 种布局 +
 指令优先级）与 `http://localhost:8787/cache.html`（主题与缓存不变量）。升级 mermaid 版本前必须先跑这两个。
 
-把构建产物部署到某个 vault 里测试 —— **不要把 vault 路径硬编码进仓库**：
+一键部署：跑单测 → 构建 → 把产物拷进指定的库。**不要把 vault 路径硬编码进仓库**，库用名字指定，
+脚本会去 Obsidian 自己的 vault 注册表（`%APPDATA%/obsidian/obsidian.json` 等）里查，库名就是路径最后一段：
 
 ```bash
-VAULT="<你的 Vault 路径>" npm run deploy
-# 或者
-npm run deploy -- "<你的 Vault 路径>"
+npm run deploy -- <库名> [<库名> …]        # 一次可以部署多个库
+npm run deploy -- <库名> --no-check        # 跳过测试与构建，只拷现有产物
+npm run deploy -- <库名> --restart         # 部署完重启 Obsidian（仅 Windows，会关掉所有库）
+npm run deploy -- "<你的 Vault 完整路径>"   # 库还没在 Obsidian 里打开过时
+VAULT="<你的 Vault 完整路径>" npm run deploy
+npm run deploy                             # 不带参数：打印可用库名与用法
 ```
 
-之后在 Obsidian 里重载插件（*设置 → 第三方插件 → 重新加载*）；插件不支持热更新。
+目标名字全部解析成功才会开始跑测试与构建；之后在 Obsidian 里重载插件（*设置 → 第三方插件 → 重新加载*，
+或 `Ctrl+P → Reload plugin without saving`）；插件不支持热更新。
 
 本机自己的信息 —— vault 路径、Obsidian 版本、工具落点 —— 记在 `.local/env.md`（整目录已被
 gitignore，照 `local-env.example.md` 复制一份填写），不要写进任何入库文件。
@@ -52,9 +57,10 @@ gitignore，照 `local-env.example.md` 复制一份填写），不要写进任�
 | `src/i18n.ts` | 语言检测（`auto` 跟随 Obsidian）与插件所有界面文案共用的中英取词 |
 | `src/settings.ts` | 设置模型与设置面板（含自定义主题 JSON 编辑器与界面语言选项） |
 | `styles.css` | 全部样式，类名以 `cm-` 命名空间；明暗通过 `body.theme-dark` 区分 |
-| `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`fit.ts`、`themes.ts`、`i18n.ts`） |
+| `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`scripts/resolve-vault.mjs`） |
 | `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量） |
-| `scripts/deploy.mjs` | 把三个产物拷进由 `VAULT` 或命令行参数指定的 vault |
+| `scripts/deploy.mjs` | 一键部署：单测 → 构建 → 把三个产物拷进指定的一个或多个库（`--no-check` / `--restart`） |
+| `scripts/resolve-vault.mjs` | 库名 ↔ 路径的换算（读 Obsidian vault 注册表；纯判定与文件读取分开，便于单测） |
 | `scripts/scan-asar.mjs` | Obsidian 升级后重新核对 `docs/obsidian-internals.md` 里的逆向结论 |
 | `local-env.example.md` | `.local/env.md` 的模板 —— 各台机器把自己的路径记在那里，不入库 |
 

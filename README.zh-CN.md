@@ -41,7 +41,7 @@
 ```bash
 npm install
 npm run build
-VAULT="<你的 Vault 路径>" npm run deploy
+npm run deploy -- <库名>
 ```
 
 ## 使用
@@ -140,11 +140,11 @@ npm run dev          # esbuild 监听构建
 npm run build        # 类型检查 + 生产构建（main.js）
 npm test             # 单元测试（不需要 Obsidian）
 npm run test:browser # 用浏览器验证真实 mermaid 渲染
-VAULT="<路径>" npm run deploy   # 把构建产物复制到某个 vault 以便测试
+npm run deploy -- <库名>   # 单测 → 构建 → 把产物复制进你指定的库
 ```
 
 协作规范与手动验收清单见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。仓库中不会提交任何本地
-vault 路径 —— 部署脚本通过环境变量或命令行参数接收 vault 路径。
+vault 路径 —— 部署脚本用 Obsidian 自己的注册表把库名换算成路径（还没在 Obsidian 里打开过的库可以直接给完整路径）。
 
 ## 许可证
 
