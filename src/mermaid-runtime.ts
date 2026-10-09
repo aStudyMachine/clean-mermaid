@@ -50,6 +50,11 @@ function ensureInitialized(): void {
 function buildInitConfig(request: RenderRequest): Record<string, unknown> {
 	const init: Record<string, unknown> = {};
 
+	// mermaid 12 各图种段自带 `look: "neo"`（节点投影 + 16~28px 内边距），会把段级值提到顶层，
+	// 所以这里写顶层 `look` 一条就能统一全部图种。块里自带 `%%{init}%%` 的用户指令排在后面，
+	// 天然压得过我们这条，想退回 neo 不必改代码。
+	init.look = "classic";
+
 	if (request.plain || !request.theme) {
 		// mermaid 原生外观（大致就是 Obsidian 默认会显示的样子）。
 		init.theme = request.plain && isDarkDocument() ? "dark" : "default";
@@ -60,6 +65,11 @@ function buildInitConfig(request: RenderRequest): Record<string, unknown> {
 	init.theme = "base";
 	init.themeVariables = request.theme.variables;
 	init.layout = request.layout;
+
+	// 官方默认的 120 会把所有节点夹成等宽、并把长标签折行；改成贴着文字量尺寸。
+	// `wrappingWidth` 是 max-width 而非固定宽，调大只会让长标签晚一点折，不会撑宽短节点。
+	init.state = { minNodeWidth: 0, wrappingWidth: 400 };
+	init.flowchart = { minNodeWidth: 0, wrappingWidth: 400 };
 
 	if (request.layout === "elk") {
 		const elk: Record<string, unknown> = {};
