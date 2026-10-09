@@ -124,7 +124,9 @@ flowchart LR
 | `%% cm:plain %%` | Render this diagram with mermaid's stock look (no card, no toolbar) |
 
 Your own `%%{init: ...}%%` directive always wins over what the plugin injects — the plugin
-prepends its configuration, so the values you write later take precedence.
+prepends its configuration, so the values you write later take precedence. For instance the
+plugin injects `look: "classic"` (flat nodes, no drop shadow) and lifts mermaid's 120px node
+width defaults; put `%%{init: {"look":"neo"}}%%` in a block to bring the shadows back for it.
 
 ## Settings
 

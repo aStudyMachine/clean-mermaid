@@ -3,6 +3,26 @@
 本项目的版本记录。格式参考 Keep a Changelog，版本号遵循语义化版本；最新条目在最上面。
 面向用户的中英双语发布说明在 GitHub Release 里，本文件是仓库内的完整变更记录。
 
+## [0.1.3] - 未发布
+
+节点几何与外观整改：去掉 mermaid 12 默认的节点投影，并让节点回到贴着文字量尺寸。
+
+### 变更
+
+- 注入指令补顶层 `look: "classic"`。mermaid 12 的每个图种段自带 `look: "neo"`，节点因此一律带
+  `drop-shadow`、内边距被硬编码抬高到 16~28px；改成 classic 后投影消失、内边距回到 `padding`。
+  影响全部图种（`%% cm:plain %%` 一并生效），箭头 marker 相应从 `barbNeo` 换回 `barb`。
+- `state` / `flowchart` 的 `minNodeWidth` 放开到 0、`wrappingWidth` 从默认 120 放宽到 400。
+  此前所有节点被夹成等宽、超过 120px 的标签被强制折行；现在节点宽度回到
+  `字数 × 字号 + 2 × padding` 的线性关系，约 28 个汉字以内的标签保持单行。
+- 想找回投影：块里写 `%%{init: {"look":"neo"}}%%` 即可 —— 用户指令排在插件注入之后，天然压得过它。
+  README 双语已补这句逃生通道。
+- `docs/obsidian-internals.md`「mermaid 12 的配置语义」补四条逆向结论：`look` 的解析层序（段级优先于顶层，
+  故一条顶层指令即可全图种生效）、`minNodeWidth` 与 `wrappingWidth` 各自的作用（后者落到 DOM 上是
+  `max-width`，不是固定宽）、`themeVariables.fontSize` 对状态图标签生效、以及「数 SVG 字符串里的
+  `data-look="neo"` 得到的是 CSS 选择器不是渲染结果」这个坑。
+- `images/compare-*-plugin.png` 四张按 `npm run shots` 重生成（native 侧未变）。
+
 ## [0.1.2] - 2026-10-08
 
 面向社区目录上架自查的整改版本。

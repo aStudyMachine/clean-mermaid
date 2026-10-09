@@ -63,6 +63,21 @@
   「Mermaid 默认 / 开 / 关」这类三态，避免在用户没要求时覆盖官方默认。
 - 流程图节点填充色取的是 `themeVariables.mainBkg`（**不是** `primaryColor`）；调主题色时不能只改
   `primaryColor`，否则节点不会变色。
+- **`look` 属于「外观三键」，而它的默认值藏在图种段里**：顶层 `look` 默认 `"classic"`，但 `defaultConfig`
+  的每个图种段（`flowchart` / `state` / `class` …）各自带 `look: "neo"`。`resolveAppearance` 按
+  「指令 → `initialize` 增量 → defaultConfig」的层序取值，同一层内**段级优先于顶层**，命中后再回写进段里
+  （`chunk-VPRB5NB3.mjs:5112-5160`）。neo 与非 neo 的实际差别是节点投影（`[data-look="neo"].node rect
+  { filter: … }`，同文件 5641-5681）和被硬编码抬高的内边距（`chunk-XC4XBNZT.mjs:676,1370,1452`），
+  以及箭头 marker（`barbNeo` / `barb`）。→ 注入**顶层** `look` 一条就能统一全部图种，只写 `state.look`
+  则只有状态图变。
+- **节点等宽与长标签折行是两条互不相干的默认值**：`state.minNodeWidth` / `flowchart.minNodeWidth`（均 120）
+  经 `labelHelper` 的 `withMinWidth` 把所有节点夹成等宽；`*.wrappingWidth`（均 120）决定折行点。
+  `wrappingWidth` 落到 DOM 上是 `max-width` 而非固定宽（`chunk-E2ZNV5FY.mjs:679-682`），所以调大它只会让
+  长标签晚一点折、不会把短节点撑宽 —— 想「贴着文字量尺寸」两个键都得动。
+- `themeVariables.fontSize` 对状态图标签确实生效（实测 computed 为 14px），于是节点宽度是
+  `字数 × 字号 + 2 × padding` 的线性函数。改字号会连带改布局密度，不只是改外观。
+- **核对 `look` 别数 SVG 字符串**：`[data-look="neo"]` 作为 CSS 选择器**永远**出现在内嵌 `<style>` 里，
+  数它等于零信息量。要看元素的 `data-look` 属性值，或节点 `rect` 的 computed `filter` 是不是 `none`。
 
 ## 我们的运行时决策（原因，不写在代码里）
 

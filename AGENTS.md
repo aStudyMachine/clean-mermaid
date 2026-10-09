@@ -23,6 +23,10 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   try/catch 是必要的兜底，保留它。
 - **自带运行时**：插件用自己打包的 mermaid，全局 `mermaid.initialize` 只在首次渲染前调用一次；
   按图配置全部通过注入 `%%{init: …}%%` 指令实现。多条 init 指令深合并、**后出现者覆盖先出现者**。
+- **节点观感由注入指令里的 `look: "classic"` 决定**：mermaid 12 每个图种段自带 `look: "neo"`（节点投影 +
+  被硬编码抬高的内边距），`buildInitConfig` 注入**顶层** `look` 一条就能全图种关掉；同一处还把
+  `state` / `flowchart` 的 `minNodeWidth` 放开到 0、`wrappingWidth` 放宽到 400，让节点贴着文字量尺寸。
+  动这几行等于改整个插件的观感，取值依据与逆向结论见 [docs/obsidian-internals.md](docs/obsidian-internals.md)。
 - **只声明桌面**：`manifest.json` 的 `isDesktopOnly` 为 `true`，导出（`src/export.ts`）一律走浏览器下载，
   不要再加移动端分支或移动端文案 —— 真机从未实测。
 - **兼容口径按实测写**：`minAppVersion` 取唯一实测过的 Obsidian 版本（现 1.14.4），因为接管依赖未公开的
