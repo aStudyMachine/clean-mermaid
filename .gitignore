@@ -13,6 +13,7 @@ data.json
 
 # Local tooling / notes (may contain local paths, never commit)
 .trae/
+.agents/
 .env
 .env.*
 *.local
