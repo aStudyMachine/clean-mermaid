@@ -43,6 +43,8 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 - 仓库保持无本机路径、无 vault 名、无个人信息；部署脚本只从 `VAULT` 环境变量或命令行参数取路径。
 - 本机路径与版本记在 `.local/env.md`（`.local` 整目录被 gitignore 的 `*.local` 覆盖，模板见 `local-env.example.md`）；需要 vault 路径、Obsidian 版本或 gh 落点时读它，不要问也不要猜。
 - 双语文档保持同步：`README.md` ↔ `README.zh-CN.md`、`CONTRIBUTING.md` ↔ `CONTRIBUTING.zh-CN.md`。
+- `CHANGELOG.md` 与 GitHub Release 说明都**只写变更内容**（新增 / 修复 / 变更 / 兼容性）。复审里
+  「不修的项」及其理由、跑过的验证过程都不写进去 —— 留在 `TODO.md`。
 - 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
 - CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
