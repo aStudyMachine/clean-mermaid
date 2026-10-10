@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 要发布的版本号，必须与 manifest.json / package.json / versions.json 一致
+        required: true
+        type: string
+      notes:
+        description: Release 说明（可留空，之后在 GitHub 上补写双语版本）
+        required: false
+        type: string
+        default: ""
+      publish:
+        description: 勾选才真正创建 Release；不勾选则只构建并打印产物哈希
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    # 创建 Release 要写 contents，签名要 id-token 与 attestations。
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      - name: 校验版本三处一致
+        env:
+          WANT: ${{ inputs.version }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const want = process.env.WANT;
+            const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
+            const manifest = read("manifest.json");
+            const pkg = read("package.json");
+            const versions = read("versions.json");
+            const problems = [];
+            if (manifest.version !== want) {
+              problems.push(`manifest.json 是 ${manifest.version}，要发的是 ${want}`);
+            }
+            if (pkg.version !== want) {
+              problems.push(`package.json 是 ${pkg.version}`);
+            }
+            if (!versions[want]) {
+              problems.push(`versions.json 里没有 ${want} 的最低版本映射`);
+            }
+            if (problems.length) {
+              console.error(problems.join("\n"));
+              process.exit(1);
+            }
+          '
+
+      - name: 产物哈希
+        run: sha256sum main.js manifest.json styles.css
+
+      - name: 发布前检查分支
+        if: ${{ inputs.publish }}
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          if [ "$REF" != "main" ]; then
+            echo "只能从 main 发布，当前是 ${REF} —— 社区目录读的是默认分支 HEAD。" >&2
+            exit 1
+          fi
+
+      - name: 创建 Release
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          gh release create "$VERSION" main.js manifest.json styles.css \
+            --title "Clean Mermaid $VERSION" \
+            --notes "${NOTES:-See CHANGELOG.md}"
+
+      - name: 签 artifact attestation
+        if: ${{ inputs.publish }}
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            ${{ github.workspace }}/main.js
+            ${{ github.workspace }}/styles.css
