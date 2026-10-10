@@ -33,8 +33,9 @@
   第一件事是确认这个钩子还在、名字没变。
 - **官方输出在实时预览里的直接子节点是 `.mermaid`，不是 `.mermaid-wrapper`**（后者只在未信任守卫那条
   分支出现）。部件的另一个直接子节点是 `.embed-actions`（Obsidian 的悬浮操作条），我们一并隐藏：
-  卡片自带 `⋯ / ⤢` 工具条，两套并排会打架。`styles.css` 里那条 `:has(> .cm-live-host > .cm-block)`
-  规则点名的是 `.mermaid-wrapper, .mermaid`。没有写成「除了 host 全隐藏」那种通配，是为了不把这个
+  卡片自带 `⋯ / ⤢` 工具条，两套并排会打架。`styles.css` 里那条按 `.cm-live-guard` 匹配的规则
+  （这个类由 `hideCoreOutput()` 在卡片撑起内容后打在部件上，刻意不用 `:has()` 之类的结构选择器）
+  点名的是 `.mermaid-wrapper, .mermaid`。没有写成「除了 host 全隐藏」那种通配，是为了不把这个
   决定变成隐式的：`.embed-actions` 目前由 `hideCoreOutput()` 显式隐藏，改动前先看这条。
 - **源码从编辑器状态取**：编辑视图里官方的 `<code>` 元素已被 detach，拿不到文本；`livepreview.ts` 用
   `view.posAtDOM(widget)` 定位，向上找 ```` ```mermaid ```` 围栏、向下找闭合围栏，再从文档里切片取源码，

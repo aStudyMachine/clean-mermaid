@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, Notice, Plugin } from "obsidian";
+import { getLanguage, MarkdownPostProcessorContext, Notice, Plugin } from "obsidian";
 import { CleanMermaidBlock } from "./block";
 import { pick, resolveLanguage, type Language } from "./i18n";
 import { createLivePreviewExtension } from "./livepreview";
@@ -79,7 +79,16 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	/** 本插件界面所用的语言。 */
 	get language(): Language {
-		return resolveLanguage(this.settings.language);
+		return resolveLanguage(this.settings.language, this.uiLanguage());
+	}
+
+	/** Obsidian 自己的界面语言；取不到时交回 null，由 i18n 回落到浏览器语言。 */
+	private uiLanguage(): string | null {
+		try {
+			return getLanguage() || null;
+		} catch {
+			return null;
+		}
 	}
 
 	/** 当前语言下的用户可见文案。 */

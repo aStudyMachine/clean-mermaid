@@ -177,9 +177,11 @@ body.theme-dark .cm-card {
 
 /* 核心渲染器会异步往同一个部件里继续追加输出，一次性隐藏子元素并不够 —— 从我们的卡片存在那一刻
    起就按规则把官方输出按住。这里只点名列出官方容器，免得连 Obsidian 自己的部件级 UI（例如
-   `.embed-actions`）一起挡掉。等到有了内容才隐藏是刻意为之：首次渲染还在进行时，正是官方输出在
-   撑这个块的高度，此刻塌成 0 会让笔记跳两次而不是一次。信任守卫 `.is-guarded` 保持可见。 */
-.cm-embed-block.cm-lang-mermaid:has(> .cm-live-host > .cm-block) > :is(.mermaid-wrapper, .mermaid):not(.is-guarded) {
+   `.embed-actions`）一起挡掉。「卡片已经撑起内容」由 `src/livepreview.ts` 打在部件上的
+   `.cm-live-guard` 表示，而不是用结构选择器去够 —— 等有了内容才加这个类是刻意为之：首次渲染还在
+   进行时，正是官方输出在撑这个块的高度，此刻塌成 0 会让笔记跳两次而不是一次。
+   信任守卫 `.is-guarded` 保持可见。 */
+.cm-embed-block.cm-lang-mermaid.cm-live-guard > :is(.mermaid-wrapper, .mermaid):not(.is-guarded) {
 	display: none !important;
 }
 
