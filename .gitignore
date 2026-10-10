@@ -12,6 +12,7 @@ tests/browser/*.js
 data.json
 
 # Local tooling / notes (may contain local paths, never commit)
+.qoder/
 .trae/
 .agents/
 .env
