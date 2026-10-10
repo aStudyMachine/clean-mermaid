@@ -364,7 +364,6 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 				slider
 					.setLimits(100, 300, 10)
 					.setValue(this.plugin.settings.maxUpscale)
-					.setDynamicTooltip()
 					.onChange(async (value) => {
 						await this.plugin.updateSettings({ maxUpscale: value });
 					}),
@@ -383,7 +382,6 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 				slider
 					.setLimits(40, 100, 5)
 					.setValue(this.plugin.settings.maxHeightVh)
-					.setDynamicTooltip()
 					.onChange(async (value) => {
 						await this.plugin.updateSettings({ maxHeightVh: value });
 					}),

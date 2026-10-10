@@ -3,7 +3,7 @@
 本项目的版本记录。格式参考 Keep a Changelog，版本号遵循语义化版本；最新条目在最上面。
 面向用户的中英双语发布说明在 GitHub Release 里，本文件是仓库内的完整变更记录。
 
-## [0.1.3] - 未发布
+## [0.1.4] - 未发布
 
 节点几何与外观整改：去掉 mermaid 12 默认的节点投影，并让节点回到贴着文字量尺寸。
 
@@ -22,6 +22,43 @@
   `max-width`，不是固定宽）、`themeVariables.fontSize` 对状态图标签生效、以及「数 SVG 字符串里的
   `data-look="neo"` 得到的是 CSS 选择器不是渲染结果」这个坑。
 - `images/compare-*-plugin.png` 四张按 `npm run shots` 重生成（native 侧未变）。
+
+## [0.1.3] - 2026-10-10
+
+按 community.obsidian.md 对 0.1.2 的自动复审反馈做的整改。插件功能与用户可见行为不变，只有一项开发期
+工具改动（见「新增」）。
+
+### 新增
+
+- `scripts/obsidian-asar.mjs`：`scan-asar.mjs` 与 `extract-obsidian-mermaid.mjs` 共用的 asar 定位。
+  Windows 自动更新会把新包下到用户数据目录（`obsidian-<版本>.asar`）并在启动时优先加载，安装目录里的
+  `resources\obsidian.asar` 因此长期停在旧版本上 —— 拿它做逆向会得出「版本更低、某 API 不存在」的错误
+  结论。现在两个脚本不传路径就自动取实际运行的那份，传了更旧的会报错退出；确需扫旧版（例如核对
+  `minAppVersion` 下调）时加 `--allow-stale`。`AGENTS.md`「动手前必知的事实」补了同一条，
+  `CONTRIBUTING` 双语的目录表一并更新（顺带把误写的 `app.asar` 改成 asar）。
+
+### 修复
+
+- 构建配置不再依赖已废弃的 `builtin-modules` 包，改用 Node 内置的 `module.builtinModules`
+  （`esbuild.config.mjs`）。旧列表是新列表的严格子集、多出来的全是 `node:` 前缀别名，打包闭包不变。
+  `package-lock.json` 一并同步 —— 复审的「可复现构建」要求 lock 与 `package.json` 一致。
+
+### 变更
+
+- 界面语言判定改走 Obsidian 公开的 `getLanguage()`（`src/main.ts`），`src/i18n.ts` 里那处
+  `window.localStorage.getItem("language")` 随之删除，纯模块不再碰任何存储。行为不变：Obsidian 自己的解析
+  就是 `localStorage.getItem("language") || navigator 语言检测 || "en"`，与我们原来的手写逻辑一致。
+- 导出与实时预览里三处 `document.createElement` 改用 Obsidian 的全局 `createEl`（`src/export.ts` 的
+  canvas 与下载 anchor、`src/livepreview.ts` 的 host）。这两处要的都是**游离元素**，所以用全局函数而不是
+  `document.createEl` —— 后者的语义是「创建并挂到该节点」，写错会让每次导出往文档里塞一个 anchor。
+- 实时预览按住官方输出的 CSS 规则不再用 `:has()` 结构选择器，改由 `livepreview.ts` 在卡片撑起内容后往
+  部件上打 `.cm-live-guard` 类（`styles.css`）。CodeMirror 会复用 DOM 部件，所以这个类必须和
+  `.cm-core-hidden` 一起在 `dispose()` / `releaseWidget()` 里清除，否则复用后的部件高度会塌成 0。
+- 设置面板两个滑块去掉已废弃的 `setDynamicTooltip()` —— 1.13 起滑块值本来就内联显示。
+
+### 兼容性
+
+- 仅桌面。`minAppVersion` 保持 1.14.4，mermaid 仍固定 12.1.0。
 
 ## [0.1.2] - 2026-10-08
 

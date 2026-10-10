@@ -37,7 +37,7 @@ export async function svgToPngBlob(svg: string, options: PngExportOptions): Prom
 		scale = scale / 2;
 	}
 
-	const canvas = document.createElement("canvas");
+	const canvas = createEl("canvas");
 	canvas.width = Math.max(1, Math.round(options.width * scale));
 	canvas.height = Math.max(1, Math.round(options.height * scale));
 	const context = canvas.getContext("2d");
@@ -78,7 +78,7 @@ export function svgWithXmlHeader(svg: string): string {
 
 function downloadBlob(blob: Blob, filename: string): void {
 	const url = URL.createObjectURL(blob);
-	const anchor = document.createElement("a");
+	const anchor = createEl("a");
 	anchor.href = url;
 	anchor.download = filename;
 	anchor.click();

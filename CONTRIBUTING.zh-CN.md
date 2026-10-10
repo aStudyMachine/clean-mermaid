@@ -60,7 +60,8 @@ gitignore，照 `local-env.example.md` 复制一份填写），不要写进任�
 | `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`scripts/resolve-vault.mjs`） |
 | `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量），以及 README 对比图的捕获链路（`capture-*`、`native-config.ts`）—— 维护者本机的素材工具，不属于贡献流程 |
 | `images/` | README 对比图的 PNG，由上面那条链路生成 |
-| `scripts/extract-obsidian-mermaid.mjs` | 从 Obsidian 的 `app.asar` 里取出它自带的 mermaid 构建，供 README 对比图的「原生」一侧使用 —— 维护者本机用，见 `AGENTS.md` |
+| `scripts/extract-obsidian-mermaid.mjs` | 从 Obsidian 的 asar 里取出它自带的 mermaid 构建，供 README 对比图的「原生」一侧使用 —— 维护者本机用，见 `AGENTS.md` |
+| `scripts/obsidian-asar.mjs` | 下面两个脚本共用的 asar 定位：默认取本机**实际运行**的那份，给到更旧的会拦下来（`--allow-stale` 放行） |
 | `scripts/deploy.mjs` | 一键部署：单测 → 构建 → 把三个产物拷进指定的一个或多个库（`--no-check` / `--restart`） |
 | `scripts/resolve-vault.mjs` | 库名 ↔ 路径的换算（读 Obsidian vault 注册表；纯判定与文件读取分开，便于单测） |
 | `scripts/scan-asar.mjs` | Obsidian 升级后重新核对 `docs/obsidian-internals.md` 里的逆向结论 |

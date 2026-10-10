@@ -15,6 +15,8 @@ import { CleanMermaidBlock } from "./block";
 const WIDGET_SELECTOR = ".cm-embed-block.cm-lang-mermaid";
 const HOST_CLASS = "cm-live-host";
 const HIDDEN_CLASS = "cm-core-hidden";
+/** 卡片已经撑起内容时打在部件上，让 CSS 按类把官方输出按住，不用结构选择器。 */
+const GUARD_CLASS = "cm-live-guard";
 
 /** 起始围栏，可带 info string，如 "```mermaid"。 */
 const FENCE_PATTERN = /^\s*(`{3,}|~{3,})\s*([A-Za-z0-9_+-]*)/;
@@ -123,8 +125,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 					this.managed.delete(widget);
 				}
 
-				const host = document.createElement("div");
-				host.className = HOST_CLASS;
+				const host = createEl("div", { cls: HOST_CLASS });
 				widget.appendChild(host);
 
 				const block = new CleanMermaidBlock(host, source, undefined, plugin);
@@ -149,6 +150,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 					this.managed.delete(widget);
 				}
 				widget.querySelector(`:scope > .${HOST_CLASS}`)?.remove();
+				widget.removeClass(GUARD_CLASS);
 				for (const child of Array.from(widget.children)) {
 					child.removeClass(HIDDEN_CLASS);
 				}
@@ -157,10 +159,12 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			private hideCoreOutput(widget: HTMLElement): void {
 				// 只在卡片真正建好之后才做：首次渲染还在进行时，这个块的高度是靠官方输出撑着的，
 				// 此时折叠它会让笔记跳两次而不是一次。
-				// CSS 规则用的也是同一个条件。
 				if (!widget.querySelector(`:scope > .${HOST_CLASS} > .cm-block`)) {
 					return;
 				}
+				// 守卫类同时交给 CSS：官方渲染器之后还会异步往这个部件里追加输出，
+				// 只有父级上的类规则能持续按住它们。
+				widget.addClass(GUARD_CLASS);
 				for (const child of Array.from(widget.children)) {
 					if (!child.classList.contains(HOST_CLASS)) {
 						child.addClass(HIDDEN_CLASS);
@@ -169,8 +173,9 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			}
 
 			private dispose(widget: HTMLElement, entry: ManagedEntry): void {
-				// 隐藏类要一起交还给官方：CodeMirror 复用过的 DOM 会带着它回来，那时部件高度是 0，
-				// 官方内容撑起来的高度被我们抹掉了。
+				// 隐藏类与守卫类要一起交还给官方：CodeMirror 复用过的 DOM 会带着它们回来，
+				// 那时部件高度是 0，官方内容撑起来的高度被我们抹掉了。
+				widget.removeClass(GUARD_CLASS);
 				for (const child of Array.from(widget.children)) {
 					child.removeClass(HIDDEN_CLASS);
 				}
