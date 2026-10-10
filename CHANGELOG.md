@@ -5,10 +5,26 @@
 
 ## [0.1.4] - 未发布
 
-节点几何与外观整改：去掉 mermaid 12 默认的节点投影，并让节点回到贴着文字量尺寸。
+节点几何与外观整改（去掉 mermaid 12 默认的节点投影、让节点回到贴着文字量尺寸）；设置面板迁移到
+声明式 API；出包搬进 CI 并给 release 资产签 artifact attestation。
+
+### 新增
+
+- `.github/workflows/release.yml`：手动触发出包 —— `npm ci` → 单测 → 构建 → 校验 `manifest.json` /
+  `package.json` / `versions.json` 三处版本一致 → 创建 Release 并带三个资产 → 用 `actions/attest@v4`
+  给 `main.js` 与 `styles.css` 签 SLSA build provenance。`publish` 开关默认关闭，不勾选时只构建并打印
+  产物哈希；发布动作额外要求当前分支是 `main`。
 
 ### 变更
 
+- 设置面板改用 Obsidian 1.13+ 的声明式 `getSettingDefinitions()`：20 个常规设置项由定义描述，
+  `getControlValue` / `setControlValue` 覆写成读写都经 `plugin.updateSettings()`（基类的默认实现是直接
+  写 `plugin.settings` 再 `saveData`，会跳过落盘之后的卡片重绘）；语言切换与主题增删改调 `update()`
+  重建定义，不再由各项自己重画面板。面板因此进入 Obsidian 的设置搜索。
+  「恢复默认设置」与「自定义主题」两行保留命令式渲染 —— 后者有自己的 DOM 结构与配套样式。
+- 「新增自定义主题」的模板选择改到实例字段上，因而在面板重绘之间保留；此前每次重绘都会回到第一个
+  内置主题。
+- 实时预览的 host 容器改由 `widget.createEl(...)` 创建并追加，替代原来的「造游离元素再 `appendChild`」。
 - 注入指令补顶层 `look: "classic"`。mermaid 12 的每个图种段自带 `look: "neo"`，节点因此一律带
   `drop-shadow`、内边距被硬编码抬高到 16~28px；改成 classic 后投影消失、内边距回到 `padding`。
   影响全部图种（`%% cm:plain %%` 一并生效），箭头 marker 相应从 `barbNeo` 换回 `barb`。
