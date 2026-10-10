@@ -1,6 +1,6 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
 import type CleanMermaidPlugin from "./main";
-import { pick, type Language, type LanguageSetting } from "./i18n";
+import type { LanguageSetting } from "./i18n";
 import {
 	BUILTIN_THEMES,
 	allThemes,
@@ -120,443 +120,322 @@ export function migrateSettings(settings: CleanMermaidSettings): boolean {
 	return changed;
 }
 
+/** 一次取值，参数顺序与 `plugin.t()` 一致：英文在前、中文在后。 */
+type Translate = (english: string, chinese: string) => string;
+
 export class CleanMermaidSettingTab extends PluginSettingTab {
 	private readonly plugin: CleanMermaidPlugin;
+	/** 「新增自定义主题」的模板选择只是界面临时状态，不入库。 */
+	private themeTemplate = BUILTIN_THEMES[0].id;
 
 	constructor(app: App, plugin: CleanMermaidPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
-	private get language(): Language {
-		return this.plugin.language;
+	getControlValue(key: string): unknown {
+		if (key === "pngScale") {
+			return String(this.plugin.settings.pngScale);
+		}
+		return this.plugin.settings[key as keyof CleanMermaidSettings];
 	}
 
-	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
-		containerEl.addClass("cm-settings");
-
-		this.renderGeneral(containerEl);
-		this.renderAppearance(containerEl);
-		this.renderLayout(containerEl);
-		this.renderInteraction(containerEl);
-		this.renderRendering(containerEl);
-		this.renderExport(containerEl);
-		this.renderCustomThemes(containerEl);
-		this.renderReset(containerEl);
+	/**
+	 * 必须覆写：基类的实现是直接往 `plugin.settings` 上写再 `saveData`，绕开了
+	 * `updateSettings()`，而落盘之后还要重绘所有已渲染的卡片。
+	 */
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === "pngScale") {
+			await this.plugin.updateSettings({ pngScale: Number(value) as PngScale });
+		} else {
+			await this.plugin.updateSettings({ [key]: value } as Partial<CleanMermaidSettings>);
+		}
+		if (key === "language") {
+			// 面板自己的文案也要跟着换，声明式定义得重建。
+			this.update();
+		}
 	}
 
-	private themeOptions(language: Language): Record<string, string> {
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		const t: Translate = (english, chinese) => this.plugin.t(english, chinese);
+		const themeOptions = this.themeOptions(t);
+
+		return [
+			{
+				name: t("Language", "语言"),
+				desc: t(
+					"Language used by every string this plugin draws — card toolbar, menus and notices. “Auto” follows Obsidian's interface language.",
+					"本插件所有界面文案使用的语言，包括卡片工具条、菜单与提示；“自动”跟随 Obsidian 的界面语言。",
+				),
+				control: {
+					type: "dropdown",
+					key: "language",
+					options: {
+						auto: t("Auto (follow Obsidian)", "自动（跟随 Obsidian）"),
+						zh: "中文",
+						en: "English",
+					},
+				},
+			},
+			{
+				type: "group",
+				heading: t("Appearance", "外观"),
+				items: [
+					{
+						name: t("Light appearance theme", "浅色模式主题"),
+						desc: t("Theme used while Obsidian is in light mode.", "Obsidian 处于浅色模式时使用的主题。"),
+						control: { type: "dropdown", key: "lightThemeId", options: themeOptions },
+					},
+					{
+						name: t("Dark appearance theme", "深色模式主题"),
+						desc: t("Theme used while Obsidian is in dark mode.", "Obsidian 处于深色模式时使用的主题。"),
+						control: { type: "dropdown", key: "darkThemeId", options: themeOptions },
+					},
+					{
+						name: t("Follow Obsidian appearance", "跟随 Obsidian 明暗"),
+						desc: t(
+							"Switch between the light and dark theme automatically. Turn off to pin one theme.",
+							"随 Obsidian 明暗自动切换主题；关闭后固定使用下方指定的主题。",
+						),
+						control: { type: "toggle", key: "followAppearance" },
+					},
+					{
+						name: t("Fixed theme", "固定主题"),
+						desc: t(
+							"Used when “Follow Obsidian appearance” is off.",
+							"当「跟随 Obsidian 明暗」关闭时使用的主题。",
+						),
+						control: { type: "dropdown", key: "fixedThemeId", options: themeOptions },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: t("Layout", "布局"),
+				items: [
+					{
+						name: t("Layout engine", "布局引擎"),
+						desc: t(
+							"ELK gives cleaner layouts for complex flowcharts. Dagre is the classic mermaid engine.",
+							"ELK 对复杂流程图排布更清晰；Dagre 是 mermaid 的经典引擎。",
+						),
+						control: {
+							type: "dropdown",
+							key: "layoutEngine",
+							options: { elk: t("ELK (default)", "ELK（默认）"), dagre: "Dagre" },
+						},
+					},
+					{
+						name: t("ELK: merge edges", "ELK：合并连线"),
+						desc: t(
+							"Merge edges that connect the same node pair. “Mermaid default” leaves the engine's own setting untouched.",
+							"合并连接同一对节点的多条连线；选「Mermaid 默认」则不改动引擎自带设置。",
+						),
+						control: {
+							type: "dropdown",
+							key: "elkMergeEdges",
+							options: {
+								default: t("Mermaid default", "Mermaid 默认"),
+								on: t("Merge edges", "合并"),
+								off: t("Keep separate", "保持分开"),
+							},
+						},
+					},
+					{
+						name: t("ELK: node placement strategy", "ELK：节点排布策略"),
+						desc: t(
+							"Node ordering strategy used by the layered ELK algorithm.",
+							"ELK 分层算法使用的节点排序策略。",
+						),
+						control: {
+							type: "dropdown",
+							key: "elkNodePlacement",
+							options: {
+								default: t("Mermaid default", "Mermaid 默认"),
+								NETWORK_SIMPLEX: t("Network simplex", "网络单纯形"),
+								BRANDES_KOEPF: "Brandes–Koepf",
+								LINEAR_SEGMENTS: t("Linear segments", "线性分段"),
+								SIMPLE: t("Simple", "简单"),
+							},
+						},
+					},
+					{
+						name: t("Auto-fit", "自适应方式"),
+						desc: t(
+							"How diagrams are scaled to the editor space. Zooming manually always overrides this.",
+							"图表如何缩放到编辑器空间；手动缩放后以手动缩放为准。",
+						),
+						control: {
+							type: "dropdown",
+							key: "fitMode",
+							options: {
+								width: t("Fit width", "适应宽度"),
+								viewport: t("Fit width and height", "适应宽高"),
+								raw: t("Natural size", "原始尺寸"),
+							},
+						},
+					},
+					{
+						name: t("Maximum upscale", "最大放大倍率"),
+						desc: t(
+							"Upper limit for auto-fit upscaling, so small diagrams stay readable but not oversized.",
+							"自适应放大的上限，避免小图被放得过大。",
+						),
+						control: { type: "slider", key: "maxUpscale", min: 100, max: 300, step: 10 },
+					},
+					{
+						name: t("Maximum height", "最大高度"),
+						desc: t(
+							"Tall diagrams are capped to this share of the viewport height.",
+							"过高的图表最多占用视口高度的这个比例。",
+						),
+						control: { type: "slider", key: "maxHeightVh", min: 40, max: 100, step: 5 },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: t("Interaction", "交互"),
+				items: [
+					{
+						name: t("Ctrl/Cmd + scroll to zoom", "Ctrl/Cmd + 滚轮缩放"),
+						desc: t("Plain scrolling keeps scrolling the note.", "普通滚轮仍然照常滚动笔记。"),
+						control: { type: "toggle", key: "wheelZoom" },
+					},
+					{
+						name: t("Drag to pan", "拖拽平移"),
+						desc: t(
+							"Drag a zoomed-in diagram with the left mouse button or a finger.",
+							"放大后可用鼠标左键或手指拖动画布平移。",
+						),
+						control: { type: "toggle", key: "dragPan" },
+					},
+					{
+						name: t("Toolbar visibility", "工具条显示方式"),
+						control: {
+							type: "dropdown",
+							key: "toolbarMode",
+							options: {
+								hover: t("On hover", "悬停显示"),
+								always: t("Always visible", "常显"),
+							},
+						},
+					},
+					{
+						name: t("Double-click to reset zoom", "双击复位缩放"),
+						desc: t(
+							"Double-clicking a diagram returns it to auto-fit.",
+							"双击图表可恢复到自适应状态。",
+						),
+						control: { type: "toggle", key: "doubleClickReset" },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: t("Rendering", "渲染"),
+				items: [
+					{
+						name: t("Enable Clean Mermaid rendering", "启用 Clean Mermaid 渲染"),
+						desc: t(
+							"When off, diagrams are rendered with mermaid's stock look instead of the clean card.",
+							"关闭后图表改用 mermaid 原生外观渲染，不再套用卡片样式。",
+						),
+						control: { type: "toggle", key: "enableRendering" },
+					},
+					{
+						name: t("Render as image", "图片化渲染"),
+						desc: t(
+							"Display the diagram as an <img> (SVG data URL) so Obsidian themes cannot restyle it. Turn off to keep the live SVG.",
+							"以 <img>（SVG data URL）方式显示图表，避免被 Obsidian 主题样式影响；关闭则保留内联 SVG。",
+						),
+						control: { type: "toggle", key: "imageify" },
+					},
+					{
+						name: t("Support %% cm: %% directives", "支持 %% cm: %% 指令"),
+						desc: t(
+							"Allow per-diagram overrides like %% cm:theme=neutral %%, %% cm:layout=dagre %% and %% cm:plain %%.",
+							"允许按图覆盖设置，例如 %% cm:theme=neutral %%、%% cm:layout=dagre %%、%% cm:plain %%。",
+						),
+						control: { type: "toggle", key: "enableDirectives" },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: t("Export", "导出"),
+				items: [
+					{
+						name: t("PNG resolution", "PNG 分辨率"),
+						desc: t(
+							"Export scale factor for downloaded and copied PNG images.",
+							"下载或复制 PNG 时使用的放大倍率。",
+						),
+						control: {
+							type: "dropdown",
+							key: "pngScale",
+							options: { "1": "1×", "2": t("2× (default)", "2×（默认）"), "3": "3×" },
+						},
+					},
+					{
+						name: t("PNG background", "PNG 背景"),
+						desc: t(
+							"Use the theme background colour for PNG exports, or keep the background transparent.",
+							"导出 PNG 时使用主题背景色，或保持透明背景。",
+						),
+						control: {
+							type: "dropdown",
+							key: "pngBackground",
+							options: {
+								theme: t("Theme background", "主题背景"),
+								transparent: t("Transparent", "透明"),
+							},
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: t("Custom themes", "自定义主题"),
+				items: [
+					{
+						name: "",
+						render: (setting: Setting) => {
+							// 这一节有自己的 DOM 结构与配套样式，整段按原样画，不交给框架排版。
+							setting.settingEl.empty();
+							this.renderCustomThemes(setting.settingEl, t);
+						},
+					},
+				],
+			},
+			{
+				name: "",
+				render: (setting: Setting) => {
+					setting.addButton((button) =>
+						button
+							.setButtonText(t("Restore default settings", "恢复默认设置"))
+							.onClick(async () => {
+								await this.plugin.updateSettings(structuredClone(DEFAULT_SETTINGS));
+								this.update();
+							}),
+					);
+				},
+			},
+		];
+	}
+
+	private themeOptions(t: Translate): Record<string, string> {
 		const options: Record<string, string> = {};
 		for (const theme of allThemes(this.plugin.settings)) {
-			options[theme.id] = theme.builtin ? theme.name : `${theme.name}${pick(language, " (custom)", "（自定义）")}`;
+			options[theme.id] = theme.builtin ? theme.name : `${theme.name}${t(" (custom)", "（自定义）")}`;
 		}
 		return options;
 	}
 
-	/** 通用项按官方 UI 约定置顶且不带分节标题。 */
-	private renderGeneral(containerEl: HTMLElement): void {
-		const language = this.language;
-
-		new Setting(containerEl)
-			.setName(pick(language, "Language", "语言"))
-			.setDesc(
-				pick(
-					language,
-					"Language used by every string this plugin draws — card toolbar, menus and notices. “Auto” follows Obsidian's interface language.",
-					"本插件所有界面文案使用的语言，包括卡片工具条、菜单与提示；“自动”跟随 Obsidian 的界面语言。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						auto: pick(language, "Auto (follow Obsidian)", "自动（跟随 Obsidian）"),
-						zh: "中文",
-						en: "English",
-					})
-					.setValue(this.plugin.settings.language)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ language: value as LanguageSetting });
-						this.display();
-					}),
-			);
-	}
-
-	private renderAppearance(containerEl: HTMLElement): void {
-		const language = this.language;
-		new Setting(containerEl).setName(pick(language, "Appearance", "外观")).setHeading();
-
-		new Setting(containerEl)
-			.setName(pick(language, "Light appearance theme", "浅色模式主题"))
-			.setDesc(
-				pick(
-					language,
-					"Theme used while Obsidian is in light mode.",
-					"Obsidian 处于浅色模式时使用的主题。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions(this.themeOptions(language))
-					.setValue(this.plugin.settings.lightThemeId)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ lightThemeId: value });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Dark appearance theme", "深色模式主题"))
-			.setDesc(
-				pick(
-					language,
-					"Theme used while Obsidian is in dark mode.",
-					"Obsidian 处于深色模式时使用的主题。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions(this.themeOptions(language))
-					.setValue(this.plugin.settings.darkThemeId)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ darkThemeId: value });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Follow Obsidian appearance", "跟随 Obsidian 明暗"))
-			.setDesc(
-				pick(
-					language,
-					"Switch between the light and dark theme automatically. Turn off to pin one theme.",
-					"随 Obsidian 明暗自动切换主题；关闭后固定使用下方指定的主题。",
-				),
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.followAppearance).onChange(async (value) => {
-					await this.plugin.updateSettings({ followAppearance: value });
-					this.display();
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Fixed theme", "固定主题"))
-			.setDesc(
-				pick(
-					language,
-					"Used when “Follow Obsidian appearance” is off.",
-					"当「跟随 Obsidian 明暗」关闭时使用的主题。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions(this.themeOptions(language))
-					.setValue(this.plugin.settings.fixedThemeId)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ fixedThemeId: value });
-					}),
-			);
-	}
-
-	private renderLayout(containerEl: HTMLElement): void {
-		const language = this.language;
-		new Setting(containerEl).setName(pick(language, "Layout", "布局")).setHeading();
-
-		new Setting(containerEl)
-			.setName(pick(language, "Layout engine", "布局引擎"))
-			.setDesc(
-				pick(
-					language,
-					"ELK gives cleaner layouts for complex flowcharts. Dagre is the classic mermaid engine.",
-					"ELK 对复杂流程图排布更清晰；Dagre 是 mermaid 的经典引擎。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						elk: pick(language, "ELK (default)", "ELK（默认）"),
-						dagre: "Dagre",
-					})
-					.setValue(this.plugin.settings.layoutEngine)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ layoutEngine: value as LayoutEngine });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "ELK: merge edges", "ELK：合并连线"))
-			.setDesc(
-				pick(
-					language,
-					"Merge edges that connect the same node pair. “Mermaid default” leaves the engine's own setting untouched.",
-					"合并连接同一对节点的多条连线；选「Mermaid 默认」则不改动引擎自带设置。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						default: pick(language, "Mermaid default", "Mermaid 默认"),
-						on: pick(language, "Merge edges", "合并"),
-						off: pick(language, "Keep separate", "保持分开"),
-					})
-					.setValue(this.plugin.settings.elkMergeEdges)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ elkMergeEdges: value as ElkMergeEdges });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "ELK: node placement strategy", "ELK：节点排布策略"))
-			.setDesc(
-				pick(
-					language,
-					"Node ordering strategy used by the layered ELK algorithm.",
-					"ELK 分层算法使用的节点排序策略。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						default: pick(language, "Mermaid default", "Mermaid 默认"),
-						NETWORK_SIMPLEX: pick(language, "Network simplex", "网络单纯形"),
-						BRANDES_KOEPF: "Brandes–Koepf",
-						LINEAR_SEGMENTS: pick(language, "Linear segments", "线性分段"),
-						SIMPLE: pick(language, "Simple", "简单"),
-					})
-					.setValue(this.plugin.settings.elkNodePlacement)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ elkNodePlacement: value as ElkNodePlacement });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Auto-fit", "自适应方式"))
-			.setDesc(
-				pick(
-					language,
-					"How diagrams are scaled to the editor space. Zooming manually always overrides this.",
-					"图表如何缩放到编辑器空间；手动缩放后以手动缩放为准。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						width: pick(language, "Fit width", "适应宽度"),
-						viewport: pick(language, "Fit width and height", "适应宽高"),
-						raw: pick(language, "Natural size", "原始尺寸"),
-					})
-					.setValue(this.plugin.settings.fitMode)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ fitMode: value as FitMode });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Maximum upscale", "最大放大倍率"))
-			.setDesc(
-				pick(
-					language,
-					"Upper limit for auto-fit upscaling, so small diagrams stay readable but not oversized.",
-					"自适应放大的上限，避免小图被放得过大。",
-				),
-			)
-			.addSlider((slider) =>
-				slider
-					.setLimits(100, 300, 10)
-					.setValue(this.plugin.settings.maxUpscale)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ maxUpscale: value });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Maximum height", "最大高度"))
-			.setDesc(
-				pick(
-					language,
-					"Tall diagrams are capped to this share of the viewport height.",
-					"过高的图表最多占用视口高度的这个比例。",
-				),
-			)
-			.addSlider((slider) =>
-				slider
-					.setLimits(40, 100, 5)
-					.setValue(this.plugin.settings.maxHeightVh)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ maxHeightVh: value });
-					}),
-			);
-	}
-
-	private renderInteraction(containerEl: HTMLElement): void {
-		const language = this.language;
-		new Setting(containerEl).setName(pick(language, "Interaction", "交互")).setHeading();
-
-		new Setting(containerEl)
-			.setName(pick(language, "Ctrl/Cmd + scroll to zoom", "Ctrl/Cmd + 滚轮缩放"))
-			.setDesc(
-				pick(
-					language,
-					"Plain scrolling keeps scrolling the note.",
-					"普通滚轮仍然照常滚动笔记。",
-				),
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.wheelZoom).onChange(async (value) => {
-					await this.plugin.updateSettings({ wheelZoom: value });
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Drag to pan", "拖拽平移"))
-			.setDesc(
-				pick(
-					language,
-					"Drag a zoomed-in diagram with the left mouse button or a finger.",
-					"放大后可用鼠标左键或手指拖动画布平移。",
-				),
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.dragPan).onChange(async (value) => {
-					await this.plugin.updateSettings({ dragPan: value });
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Toolbar visibility", "工具条显示方式"))
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						hover: pick(language, "On hover", "悬停显示"),
-						always: pick(language, "Always visible", "常显"),
-					})
-					.setValue(this.plugin.settings.toolbarMode)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ toolbarMode: value as ToolbarMode });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Double-click to reset zoom", "双击复位缩放"))
-			.setDesc(
-				pick(
-					language,
-					"Double-clicking a diagram returns it to auto-fit.",
-					"双击图表可恢复到自适应状态。",
-				),
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.doubleClickReset).onChange(async (value) => {
-					await this.plugin.updateSettings({ doubleClickReset: value });
-				}),
-			);
-	}
-
-	private renderRendering(containerEl: HTMLElement): void {
-		const language = this.language;
-		new Setting(containerEl).setName(pick(language, "Rendering", "渲染")).setHeading();
-
-		new Setting(containerEl)
-			.setName(pick(language, "Enable Clean Mermaid rendering", "启用 Clean Mermaid 渲染"))
-			.setDesc(
-				pick(
-					language,
-					"When off, diagrams are rendered with mermaid's stock look instead of the clean card.",
-					"关闭后图表改用 mermaid 原生外观渲染，不再套用卡片样式。",
-				),
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.enableRendering).onChange(async (value) => {
-					await this.plugin.updateSettings({ enableRendering: value });
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Render as image", "图片化渲染"))
-			.setDesc(
-				pick(
-					language,
-					"Display the diagram as an <img> (SVG data URL) so Obsidian themes cannot restyle it. Turn off to keep the live SVG.",
-					"以 <img>（SVG data URL）方式显示图表，避免被 Obsidian 主题样式影响；关闭则保留内联 SVG。",
-				),
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.imageify).onChange(async (value) => {
-					await this.plugin.updateSettings({ imageify: value });
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "Support %% cm: %% directives", "支持 %% cm: %% 指令"))
-			.setDesc(
-				pick(
-					language,
-					"Allow per-diagram overrides like %% cm:theme=neutral %%, %% cm:layout=dagre %% and %% cm:plain %%.",
-					"允许按图覆盖设置，例如 %% cm:theme=neutral %%、%% cm:layout=dagre %%、%% cm:plain %%。",
-				),
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.enableDirectives).onChange(async (value) => {
-					await this.plugin.updateSettings({ enableDirectives: value });
-				}),
-			);
-	}
-
-	private renderExport(containerEl: HTMLElement): void {
-		const language = this.language;
-		new Setting(containerEl).setName(pick(language, "Export", "导出")).setHeading();
-
-		new Setting(containerEl)
-			.setName(pick(language, "PNG resolution", "PNG 分辨率"))
-			.setDesc(
-				pick(
-					language,
-					"Export scale factor for downloaded and copied PNG images.",
-					"下载或复制 PNG 时使用的放大倍率。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						"1": "1×",
-						"2": pick(language, "2× (default)", "2×（默认）"),
-						"3": "3×",
-					})
-					.setValue(String(this.plugin.settings.pngScale))
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ pngScale: Number(value) as PngScale });
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(pick(language, "PNG background", "PNG 背景"))
-			.setDesc(
-				pick(
-					language,
-					"Use the theme background colour for PNG exports, or keep the background transparent.",
-					"导出 PNG 时使用主题背景色，或保持透明背景。",
-				),
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						theme: pick(language, "Theme background", "主题背景"),
-						transparent: pick(language, "Transparent", "透明"),
-					})
-					.setValue(this.plugin.settings.pngBackground)
-					.onChange(async (value) => {
-						await this.plugin.updateSettings({ pngBackground: value as PngBackground });
-					}),
-			);
-	}
-
-	private renderCustomThemes(containerEl: HTMLElement): void {
-		const language = this.language;
-		new Setting(containerEl).setName(pick(language, "Custom themes", "自定义主题")).setHeading();
+	private renderCustomThemes(containerEl: HTMLElement, t: Translate): void {
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
-			text: pick(
-				language,
+			text: t(
 				"A custom theme is a plain Mermaid themeVariables object. Start from a built-in theme, then adjust the colours. Invalid JSON is rejected and the last valid version stays in effect.",
 				"自定义主题就是一份 Mermaid themeVariables JSON。可从内置主题复制后调整配色；非法 JSON 会被拒绝并保留上一版生效值。",
 			),
@@ -564,15 +443,13 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 
 		const list = containerEl.createDiv({ cls: "cm-theme-list" });
 		this.plugin.settings.customThemes.forEach((_theme, index) =>
-			this.renderCustomTheme(list, index, language),
+			this.renderCustomTheme(list, index, t),
 		);
 
-		let template = BUILTIN_THEMES[0].id;
 		new Setting(containerEl)
-			.setName(pick(language, "Add custom theme", "新增自定义主题"))
+			.setName(t("Add custom theme", "新增自定义主题"))
 			.setDesc(
-				pick(
-					language,
+				t(
 					"Creates a new theme seeded from the selected built-in theme.",
 					"基于所选内置主题复制出一个新的自定义主题。",
 				),
@@ -581,32 +458,30 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 				for (const builtin of BUILTIN_THEMES) {
 					dropdown.addOption(builtin.id, builtin.name);
 				}
-				dropdown.setValue(template);
-				dropdown.onChange((value) => {
-					template = value;
+				dropdown.setValue(this.themeTemplate).onChange((value) => {
+					this.themeTemplate = value;
 				});
 			})
 			.addButton((button) =>
 				button
-					.setButtonText(pick(language, "Add", "新增"))
+					.setButtonText(t("Add", "新增"))
 					.setCta()
 					.onClick(async () => {
-						const base = findTheme(this.plugin.settings, template) ?? BUILTIN_THEMES[0];
-						const id = this.uniqueCustomId(base.id);
+						const base = findTheme(this.plugin.settings, this.themeTemplate) ?? BUILTIN_THEMES[0];
 						this.plugin.settings.customThemes.push({
-							id,
+							id: this.uniqueCustomId(base.id),
 							name: `${base.name} copy`,
 							dark: base.dark,
 							variables: structuredClone(base.variables),
 						});
 						await this.plugin.saveSettings();
-						this.display();
+						this.update();
 						this.plugin.refreshAll();
 					}),
 			);
 	}
 
-	private renderCustomTheme(list: HTMLElement, index: number, language: Language): void {
+	private renderCustomTheme(list: HTMLElement, index: number, t: Translate): void {
 		const plugin = this.plugin;
 		const theme = plugin.settings.customThemes[index];
 		if (!theme) {
@@ -619,7 +494,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 			.setName(theme.id)
 			.addText((text) =>
 				text
-					.setPlaceholder(pick(language, "Theme name", "主题名称"))
+					.setPlaceholder(t("Theme name", "主题名称"))
 					.setValue(theme.name)
 					.onChange(async (value) => {
 						theme.name = value.trim() || theme.id;
@@ -629,7 +504,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 			)
 			.addToggle((toggle) =>
 				toggle
-					.setTooltip(pick(language, "Dark theme", "深色主题"))
+					.setTooltip(t("Dark theme", "深色主题"))
 					.setValue(theme.dark)
 					.onChange(async (value) => {
 						theme.dark = value;
@@ -639,11 +514,11 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 			.addExtraButton((button) =>
 				button
 					.setIcon("trash")
-					.setTooltip(pick(language, "Delete theme", "删除主题"))
+					.setTooltip(t("Delete theme", "删除主题"))
 					.onClick(async () => {
 						plugin.settings.customThemes.splice(index, 1);
 						await plugin.saveSettings();
-						this.display();
+						this.update();
 						plugin.refreshAll();
 					}),
 			);
@@ -655,7 +530,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 
 		const status = block.createDiv({
 			cls: "cm-theme-status",
-			text: pick(language, "Valid themeVariables JSON", "themeVariables JSON 合法"),
+			text: t("Valid themeVariables JSON", "themeVariables JSON 合法"),
 		});
 
 		let timer = 0;
@@ -665,8 +540,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 				const result = parseThemeVariables(textarea.value);
 				if (!result.ok) {
 					status.setText(
-						`${pick(
-							language,
+						`${t(
 							"Invalid JSON — keeping the previous value.",
 							"JSON 非法 — 保留上一版生效值。",
 						)} ${result.error}`,
@@ -675,7 +549,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 					textarea.addClass("cm-invalid");
 					return;
 				}
-				status.setText(pick(language, "Valid themeVariables JSON", "themeVariables JSON 合法"));
+				status.setText(t("Valid themeVariables JSON", "themeVariables JSON 合法"));
 				status.removeClass("cm-invalid");
 				textarea.removeClass("cm-invalid");
 				theme.variables = result.variables;
@@ -693,15 +567,5 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 			candidate = `${base}-custom-${counter}`;
 		}
 		return candidate;
-	}
-
-	private renderReset(containerEl: HTMLElement): void {
-		const language = this.language;
-		new Setting(containerEl).addButton((button) =>
-			button.setButtonText(pick(language, "Restore default settings", "恢复默认设置")).onClick(async () => {
-				await this.plugin.updateSettings(structuredClone(DEFAULT_SETTINGS));
-				this.display();
-			}),
-		);
 	}
 }
