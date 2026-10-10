@@ -1,6 +1,6 @@
 {
   "name": "clean-mermaid",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Render Mermaid diagrams as clean cards for Obsidian — ELK layout, auto-fit and centering, zoom/pan, image preview, PNG/SVG export, built-in and custom themes.",
   "main": "main.js",
   "scripts": {
