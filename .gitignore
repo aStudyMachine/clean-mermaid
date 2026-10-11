@@ -14,7 +14,9 @@ data.json
 # Local tooling / notes (may contain local paths, never commit)
 .qoder/
 .trae/
-.agents/
+# 跨 agent 共用的 Skill 纳入版本管理；.agents/ 其余内容仍忽略
+.agents/*
+!.agents/skills/
 .zcode/
 .env
 .env.*
