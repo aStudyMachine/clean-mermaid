@@ -90,6 +90,9 @@ gitignore，照 `local-env.example.md` 复制一份填写），不要写进任�
 - 行为、设置或指令发生变化时，需同时更新 `README.md` 与 `README.zh-CN.md`、
   `CONTRIBUTING.md` 与 `CONTRIBUTING.zh-CN.md`，保持各语言版本内容一致。
 - 仅在发布 PR 里更新 `manifest.json` 与 `versions.json` 的版本号。
+- `CHANGELOG.md` 与 GitHub Release 说明面向普通用户，具体说明与用户相关的功能、修复、行为变化、
+  兼容性及必要的使用方式。内部维护可以一句概括，不展开实现细节、重构、开发工具、CI / 部署流程、
+  元数据清理、品牌措辞调整或社区上架 / 复审内容。复审决定与验证记录留在 `TODO.md`。
 
 ## 手动验收清单
 

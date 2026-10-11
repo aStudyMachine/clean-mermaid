@@ -99,6 +99,11 @@ committed file.
   `CONTRIBUTING.zh-CN.md`**, when behaviour, settings or directives change (keep the language
   versions in sync).
 - Bump `manifest.json` + `versions.json` in release PRs only.
+- `CHANGELOG.md` and GitHub Release notes are for ordinary users. Describe relevant features,
+  fixes, behaviour changes, compatibility and necessary usage instructions. Internal maintenance
+  may be summarised in one sentence; do not detail implementation, refactoring, developer tooling,
+  CI/deployment workflows, metadata cleanup, branding edits or community submission/review work.
+  Review decisions and verification records belong in `TODO.md`.
 
 ## Manual acceptance checklist
 
