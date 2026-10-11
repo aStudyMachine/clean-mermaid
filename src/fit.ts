@@ -59,3 +59,34 @@ export function computeFit(input: FitInput): number {
 
 	return clamp(scale, MIN_SCALE, MAX_SCALE);
 }
+
+export interface ViewerWindowSizeInput {
+	/** 图表视口的目标内容宽（px）＝图表自然宽。 */
+	stageW: number;
+	/** 图表视口的目标内容高（px）。 */
+	stageH: number;
+	/** 窗口里除图表视口外的宽向开销（标题栏、工具栏、内边距等，px）。 */
+	chromeW: number;
+	/** 同上的高向开销（px）。 */
+	chromeH: number;
+	/** 窗口最小宽（px）。 */
+	minW: number;
+	/** 窗口最小高（px）。 */
+	minH: number;
+	/** 窗口最大宽（px，按视口折算）。 */
+	maxW: number;
+	/** 窗口最大高（px）。 */
+	maxH: number;
+}
+
+/**
+ * 纯函数：查看器打开时的默认窗口尺寸。
+ * 目标是图表视口恰好装下 100% 缩放的图表，向上取整保证 fit 精确落在 100%，
+ * 再钳到 [min, max]；min 超过 max（视口极小）时取 max。
+ */
+export function computeViewerWindowSize(input: ViewerWindowSizeInput): { width: number; height: number } {
+	return {
+		width: clamp(Math.ceil(input.stageW + input.chromeW), input.minW, input.maxW),
+		height: clamp(Math.ceil(input.stageH + input.chromeH), input.minH, input.maxH),
+	};
+}

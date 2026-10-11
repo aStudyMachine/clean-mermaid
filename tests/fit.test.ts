@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { clamp, computeFit, MAX_SCALE, MIN_SCALE, type FitInput } from "../src/fit";
+import {
+	clamp,
+	computeFit,
+	computeViewerWindowSize,
+	MAX_SCALE,
+	MIN_SCALE,
+	type FitInput,
+	type ViewerWindowSizeInput,
+} from "../src/fit";
 
 const input = (over: Partial<FitInput> = {}): FitInput => ({
 	naturalW: 400,
@@ -67,5 +75,51 @@ describe("computeFit", () => {
 		expect(computeFit(input({ naturalW: 0 }))).toBe(1);
 		expect(computeFit(input({ naturalH: 0 }))).toBe(1);
 		expect(computeFit(input({ containerW: 0 }))).toBe(1);
+	});
+});
+
+const viewerInput = (over: Partial<ViewerWindowSizeInput> = {}): ViewerWindowSizeInput => ({
+	stageW: 800,
+	stageH: 500,
+	chromeW: 40,
+	chromeH: 90,
+	minW: 480,
+	minH: 360,
+	maxW: 1600,
+	maxH: 1200,
+	...over,
+});
+
+describe("computeViewerWindowSize", () => {
+	it("sizes the window to the diagram plus chrome", () => {
+		expect(computeViewerWindowSize(viewerInput())).toEqual({ width: 840, height: 590 });
+	});
+
+	it("ceils fractional sizes so fit lands exactly on 100%", () => {
+		expect(computeViewerWindowSize(viewerInput({ stageW: 800.25, stageH: 499.5 }))).toEqual({
+			width: 841,
+			height: 590,
+		});
+	});
+
+	it("clamps tiny diagrams up to the minimum window size", () => {
+		expect(computeViewerWindowSize(viewerInput({ stageW: 100, stageH: 80 }))).toEqual({
+			width: 480,
+			height: 360,
+		});
+	});
+
+	it("clamps oversized diagrams down to the viewport cap", () => {
+		expect(computeViewerWindowSize(viewerInput({ stageW: 4000, stageH: 3000 }))).toEqual({
+			width: 1600,
+			height: 1200,
+		});
+	});
+
+	it("prefers the viewport cap when the minimum exceeds it", () => {
+		expect(computeViewerWindowSize(viewerInput({ maxW: 300, maxH: 200 }))).toEqual({
+			width: 300,
+			height: 200,
+		});
 	});
 });

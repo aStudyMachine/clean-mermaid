@@ -18,7 +18,8 @@ Clean Mermaid 把 vault 里每个 ` ```mermaid ` 代码块渲染成一张干净�
 - **图片化预览** —— 图表以 `<img>`（SVG data URL）显示，Obsidian 主题与 CSS 片段无法改变其样式，
   所见即所得。
 - **导出** —— 在 `⋯` 菜单中下载 2× PNG、SVG，或复制图片 / 复制 Mermaid 源码。
-- **全屏查看器**（`⤢`）—— 平移、滚轮/双指缩放、适应、100%、导出。
+- **全屏查看器**（`⤢`）—— 默认按图表 100% 尺寸打开（超屏时收进视口上限），四边与四角均可拖拽
+  调整大小；支持平移、滚轮/双指缩放、适应、导出。
 - **4 个内置主题** —— Clean Light、Clean Dark、Neutral、GitHub Light；另支持以标准 Mermaid
   `themeVariables` JSON 编写的**自定义主题**，并带校验。
 - **明暗自适应** —— 跟随 Obsidian 外观自动切换，并在切换时即时重绘。
@@ -165,7 +166,7 @@ src/
   mermaid-runtime.ts  自带 mermaid + 配置注入 + LRU 缓存
   themes.ts           内置主题、自定义主题解析与校验
   fit.ts              纯函数自适应计算
-  viewer.ts           全屏缩放/平移弹窗
+  viewer.ts           全屏缩放/平移弹窗，按图定尺寸、可拖拽调整大小
   export.ts           PNG/SVG/剪贴板导出
   i18n.ts             语言检测与中英取词，供全部界面文案使用
   settings.ts         设置模型与设置面板

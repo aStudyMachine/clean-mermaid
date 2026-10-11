@@ -239,9 +239,12 @@ body.theme-dark .cm-card {
 /* ------------------------------------------------------------------- 模态框 */
 
 .modal.cm-modal {
+	/* 默认尺寸只是兜底；打开时 JS 会按「图表 100% 所需」改写为内联宽高。 */
 	width: min(1100px, 92vw);
 	max-width: 92vw;
 	height: min(820px, 88vh);
+	max-height: 88vh;
+	position: relative;
 }
 
 .modal.cm-modal .modal-content {
@@ -305,6 +308,79 @@ body.theme-dark .cm-card {
 .cm-modal-stage .cm-modal-media {
 	max-width: none;
 	max-height: none;
+}
+
+/* 拖拽调窗口大小的命中区：贴着窗口四边与四角的透明条，只换光标不做视觉。 */
+.cm-modal-handle {
+	position: absolute;
+	z-index: 20;
+	touch-action: none;
+}
+
+.cm-modal-handle-n,
+.cm-modal-handle-s {
+	left: 12px;
+	right: 12px;
+	height: 6px;
+}
+
+.cm-modal-handle-n {
+	top: 0;
+	cursor: n-resize;
+}
+
+.cm-modal-handle-s {
+	bottom: 0;
+	cursor: s-resize;
+}
+
+.cm-modal-handle-e,
+.cm-modal-handle-w {
+	top: 12px;
+	bottom: 12px;
+	width: 6px;
+}
+
+.cm-modal-handle-e {
+	right: 0;
+	cursor: e-resize;
+}
+
+.cm-modal-handle-w {
+	left: 0;
+	cursor: w-resize;
+}
+
+.cm-modal-handle-ne,
+.cm-modal-handle-nw,
+.cm-modal-handle-se,
+.cm-modal-handle-sw {
+	width: 12px;
+	height: 12px;
+}
+
+.cm-modal-handle-ne {
+	top: 0;
+	right: 0;
+	cursor: ne-resize;
+}
+
+.cm-modal-handle-nw {
+	top: 0;
+	left: 0;
+	cursor: nw-resize;
+}
+
+.cm-modal-handle-se {
+	bottom: 0;
+	right: 0;
+	cursor: se-resize;
+}
+
+.cm-modal-handle-sw {
+	bottom: 0;
+	left: 0;
+	cursor: sw-resize;
 }
 
 /* ---------------------------------------------------------------- 设置页 */

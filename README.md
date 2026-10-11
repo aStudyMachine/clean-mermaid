@@ -19,7 +19,8 @@ pan, fullscreen view, PNG/SVG export and themable colours.
 - **Image preview** — diagrams are displayed as `<img>` (SVG data URL), so Obsidian themes and
   CSS snippets cannot restyle them; what you see is what you export.
 - **Export** — download a 2× PNG, an SVG, or copy the image / the Mermaid source from the `⋯` menu.
-- **Fullscreen viewer** (`⤢`) — pan, wheel/pinch zoom, fit, 100 %, export.
+- **Fullscreen viewer** (`⤢`) — opens sized to the diagram at 100 % (capped by the viewport) and is
+  drag-resizable from any edge or corner; pan, wheel/pinch zoom, fit, export.
 - **4 built-in themes** — Clean Light, Clean Dark, Neutral, GitHub Light — plus **custom themes**
   as plain Mermaid `themeVariables` JSON, with validation.
 - **Light/dark aware** — follows the Obsidian appearance automatically and re-renders on switch.
@@ -172,7 +173,7 @@ src/
   mermaid-runtime.ts  bundled mermaid + config injection + LRU cache
   themes.ts           built-in themes, custom theme parsing/resolution
   fit.ts              pure auto-fit math
-  viewer.ts           fullscreen pan/zoom modal
+  viewer.ts           fullscreen pan/zoom modal, sized to the diagram and drag-resizable
   export.ts           PNG/SVG/clipboard export helpers
   i18n.ts             language detection + the bilingual picker used by every label
   settings.ts         settings model + settings tab

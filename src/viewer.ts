@@ -1,8 +1,15 @@
 import { App, Modal, setIcon } from "obsidian";
 import type CleanMermaidPlugin from "./main";
-import { clamp, MAX_SCALE, MIN_SCALE } from "./fit";
+import { clamp, computeViewerWindowSize, MAX_SCALE, MIN_SCALE } from "./fit";
 import { svgToDataUrl, type RenderedDiagram } from "./mermaid-runtime";
 import { exportDiagramPng, exportDiagramSvg, type ExportBundle } from "./export";
+
+/** 窗口允许的最小尺寸（px）；再小工具栏就不可用了。 */
+const VIEWER_MIN_WIDTH = 480;
+const VIEWER_MIN_HEIGHT = 360;
+/** 窗口相对视口的上限，与 styles.css 里 .cm-modal 的 max-width / max-height 同一口径。 */
+const VIEWER_MAX_WIDTH_RATIO = 0.92;
+const VIEWER_MAX_HEIGHT_RATIO = 0.88;
 
 export interface ViewerData {
 	rendered: RenderedDiagram;
@@ -13,6 +20,19 @@ export interface ViewerData {
 interface Point {
 	x: number;
 	y: number;
+}
+
+type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+
+interface ResizeState {
+	dir: ResizeDir;
+	pointerId: number;
+	startX: number;
+	startY: number;
+	startWidth: number;
+	startHeight: number;
+	startShiftX: number;
+	startShiftY: number;
 }
 
 /** 由图表上的 ⤢ 按钮打开的全屏平移/缩放查看器。 */
@@ -32,6 +52,7 @@ export class DiagramViewerModal extends Modal {
 	private zoom = 1;
 	private tx = 0;
 	private ty = 0;
+	private resizeState: ResizeState | null = null;
 
 	constructor(app: App, plugin: CleanMermaidPlugin, data: ViewerData) {
 		super(app);
@@ -56,6 +77,11 @@ export class DiagramViewerModal extends Modal {
 		media.draggable = false;
 		this.mediaEl = media;
 
+		// 默认窗口大小＝图表 100% 所需；此处若还量不到布局，rAF 里会重算一次。
+		this.sizeToDiagram();
+		this.buildResizeHandles();
+		window.addEventListener("resize", this.onViewportResize);
+
 		this.bindInteractions();
 
 		this.scope.register([], "+", () => {
@@ -75,12 +101,17 @@ export class DiagramViewerModal extends Modal {
 			return false;
 		});
 
-		window.requestAnimationFrame(() => this.fit());
+		window.requestAnimationFrame(() => {
+			this.sizeToDiagram();
+			this.fit();
+		});
 	}
 
 	onClose(): void {
 		this.contentEl.empty();
 		this.pointers.clear();
+		this.resizeState = null;
+		window.removeEventListener("resize", this.onViewportResize);
 	}
 
 	private buildToolbar(): void {
@@ -194,6 +225,156 @@ export class DiagramViewerModal extends Modal {
 
 		stage.addEventListener("dblclick", () => this.fit());
 	}
+
+	/** 视口允许的窗口上限；用最小值兜底，避免极小视口时上限比下限还小。 */
+	private viewportMaxSize(): { maxW: number; maxH: number } {
+		return {
+			maxW: Math.max(VIEWER_MIN_WIDTH, window.innerWidth * VIEWER_MAX_WIDTH_RATIO),
+			maxH: Math.max(VIEWER_MIN_HEIGHT, window.innerHeight * VIEWER_MAX_HEIGHT_RATIO),
+		};
+	}
+
+	/** 把窗口设为「图表 100% 所需 + 周边开销」，钳在最小尺寸与视口之间。 */
+	private sizeToDiagram(): void {
+		const { width, height } = this.data.rendered;
+		if (!width || !height) {
+			return;
+		}
+		const modal = this.modalEl;
+		const stage = this.stageEl;
+		// 未入树或还没布局时量不到 chrome，交给 rAF 里的重试。
+		if (!modal.isConnected || !modal.offsetWidth || !stage.clientWidth) {
+			return;
+		}
+		const { maxW, maxH } = this.viewportMaxSize();
+		// chrome 用 clientWidth 差值来量：stage 的边框不计入图表空间，
+		// 图表才能以 100% 恰好装满 stage 内容盒（fit 精确等于 1）。
+		const { width: w, height: h } = computeViewerWindowSize({
+			stageW: width,
+			stageH: height,
+			chromeW: modal.offsetWidth - stage.clientWidth,
+			chromeH: modal.offsetHeight - stage.clientHeight,
+			minW: VIEWER_MIN_WIDTH,
+			minH: VIEWER_MIN_HEIGHT,
+			maxW,
+			maxH,
+		});
+		modal.style.width = `${w}px`;
+		modal.style.height = `${h}px`;
+	}
+
+	private buildResizeHandles(): void {
+		const dirs: ResizeDir[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
+		for (const dir of dirs) {
+			const handle = this.modalEl.createDiv({ cls: `cm-modal-handle cm-modal-handle-${dir}` });
+			handle.setAttribute("aria-hidden", "true");
+			handle.addEventListener("pointerdown", (event: PointerEvent) => {
+				if (event.button !== 0) {
+					return;
+				}
+				event.preventDefault();
+				const rect = this.modalEl.getBoundingClientRect();
+				handle.setPointerCapture(event.pointerId);
+				this.resizeState = {
+					dir,
+					pointerId: event.pointerId,
+					startX: event.clientX,
+					startY: event.clientY,
+					startWidth: rect.width,
+					startHeight: rect.height,
+					startShiftX: parseFloat(this.modalEl.style.left) || 0,
+					startShiftY: parseFloat(this.modalEl.style.top) || 0,
+				};
+			});
+			handle.addEventListener("pointermove", (event: PointerEvent) => {
+				if (this.resizeState?.pointerId === event.pointerId) {
+					this.resizeTo(event.clientX, event.clientY);
+				}
+			});
+			const endResize = (event: PointerEvent) => {
+				if (this.resizeState?.pointerId !== event.pointerId) {
+					return;
+				}
+				this.resizeState = null;
+				try {
+					handle.releasePointerCapture(event.pointerId);
+				} catch {
+					// 指针捕获可能已经被释放了。
+				}
+			};
+			handle.addEventListener("pointerup", endResize);
+			handle.addEventListener("pointercancel", endResize);
+		}
+	}
+
+	private resizeTo(clientX: number, clientY: number): void {
+		const state = this.resizeState;
+		if (!state) {
+			return;
+		}
+		const { maxW, maxH } = this.viewportMaxSize();
+		let width = state.startWidth;
+		let height = state.startHeight;
+		if (state.dir.includes("e")) {
+			width += clientX - state.startX;
+		}
+		if (state.dir.includes("w")) {
+			width -= clientX - state.startX;
+		}
+		if (state.dir.includes("s")) {
+			height += clientY - state.startY;
+		}
+		if (state.dir.includes("n")) {
+			height -= clientY - state.startY;
+		}
+		width = clamp(width, VIEWER_MIN_WIDTH, maxW);
+		height = clamp(height, VIEWER_MIN_HEIGHT, maxH);
+
+		const modal = this.modalEl;
+		modal.style.width = `${Math.round(width)}px`;
+		modal.style.height = `${Math.round(height)}px`;
+
+		// 弹层被 flex 居中：宽高各变 Δ，两边就各让出 Δ/2。按拖拽方向用相对偏移补回 Δ/2，
+		// 被锚定的对边就能保持原地不动（原生窗口手感）。偏移累计在 style.left/top 上。
+		const dw = width - state.startWidth;
+		const dh = height - state.startHeight;
+		let shiftX = state.startShiftX;
+		let shiftY = state.startShiftY;
+		if (state.dir.includes("e")) {
+			shiftX += dw / 2;
+		}
+		if (state.dir.includes("w")) {
+			shiftX -= dw / 2;
+		}
+		if (state.dir.includes("s")) {
+			shiftY += dh / 2;
+		}
+		if (state.dir.includes("n")) {
+			shiftY -= dh / 2;
+		}
+		modal.style.left = `${Math.round(shiftX)}px`;
+		modal.style.top = `${Math.round(shiftY)}px`;
+
+		// 缩放保持不动，只按新 stage 尺寸重算平移限位。
+		this.clampPan();
+		this.applyTransform();
+	}
+
+	private onViewportResize = (): void => {
+		const { maxW, maxH } = this.viewportMaxSize();
+		const modal = this.modalEl;
+		if (modal.offsetWidth > maxW) {
+			modal.style.width = `${Math.round(maxW)}px`;
+		}
+		if (modal.offsetHeight > maxH) {
+			modal.style.height = `${Math.round(maxH)}px`;
+		}
+		// 居中基准随视口变了，锚定偏移直接归零，窗口回到视口中央。
+		modal.style.left = "0px";
+		modal.style.top = "0px";
+		this.clampPan();
+		this.applyTransform();
+	};
 
 	private pointerDistance(): number {
 		const points = [...this.pointers.values()];

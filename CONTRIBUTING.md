@@ -58,7 +58,7 @@ committed file.
 | `src/mermaid-runtime.ts` | Bundled mermaid runtime: init config, `%%{init}%%` injection, SVG normalisation, LRU cache |
 | `src/themes.ts` | Built-in themes, custom theme parsing/validation, theme resolution for light/dark |
 | `src/fit.ts` | Pure auto-fit math (easy to unit test — no Obsidian dependency) |
-| `src/viewer.ts` | Fullscreen modal viewer (zoom, pan, pinch, fit, export) |
+| `src/viewer.ts` | Fullscreen modal viewer (sized to the diagram, drag-resizable; zoom, pan, pinch, fit, export) |
 | `src/export.ts` | PNG rasterisation, SVG output, clipboard |
 | `src/i18n.ts` | Language detection (`auto` follows Obsidian) and the bilingual picker behind every label the plugin draws |
 | `src/settings.ts` | Settings model + settings tab (custom theme JSON editor, UI language option) |
@@ -120,8 +120,10 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 5. Resizing the pane re-fits the diagram and keeps it centred; a very narrow pane does not overflow.
 6. `Ctrl/Cmd + scroll` zooms around the pointer; plain scroll still scrolls the note; drag pans;
    double-click resets.
-7. `⤢` opens the fullscreen viewer; zoom/pan/fit/100 %/Esc all behave; closing it leaves the inline
-   diagram untouched.
+7. `⤢` opens the fullscreen viewer sized to the diagram at 100 % (oversized diagrams get the
+   viewport cap and start zoomed to fit); dragging any edge or corner resizes it with the opposite
+   side anchored and stops at the minimum/viewport limits; zoom/pan/fit/100 %/Esc all behave;
+   closing it leaves the inline diagram untouched.
 8. `⋯`: PNG (with background), SVG, copy image and copy source all work.
 9. `%% cm:theme=neutral %%`, `%% cm:layout=dagre %%` and `%% cm:plain %%` behave as documented and
    never show up in the rendered diagram.
