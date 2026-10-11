@@ -7,6 +7,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 [README.md](README.md) / [README.zh-CN.md](README.zh-CN.md) 特性与用法 ·
 [CONTRIBUTING.md](CONTRIBUTING.md) 环境、目录结构、实现约定、手动验收清单 ·
 [docs/obsidian-internals.md](docs/obsidian-internals.md) 动渲染 / 主题 / 接管前必读的逆向结论 ·
+[docs/agent-lessons.md](docs/agent-lessons.md) 跨会话踩坑经验与对策（agent 共识，补录规则见文内） ·
 [CHANGELOG.md](CHANGELOG.md) 版本变更记录（发版时补条目） ·
 [TODO.md](TODO.md) 当前待办（完成即删）
 
@@ -52,6 +53,8 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
 - 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `fit.ts` / `themes.ts` / `i18n.ts`。
 - mermaid 版本已固定，升级版本需先在本地验证渲染行为再提交（四套主题着色、ELK/Dagre 差异、指令合并优先级）。
+- 会话中踩坑、修正了既有认知或建立了新的可复用验证方式后，主动提议把「教训 → 对策」补录进
+  [docs/agent-lessons.md](docs/agent-lessons.md)，经维护者确认后落档；与既有文档重复的内容引用而不复制。
 
 ## 常用命令
 
