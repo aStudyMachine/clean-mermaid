@@ -370,8 +370,7 @@ export class DiagramViewerModal extends Modal {
 			modal.style.height = `${Math.round(maxH)}px`;
 		}
 		// 居中基准随视口变了，锚定偏移直接归零，窗口回到视口中央。
-		modal.style.left = "0px";
-		modal.style.top = "0px";
+		modal.setCssStyles({ left: "0px", top: "0px" });
 		this.clampPan();
 		this.applyTransform();
 	};
