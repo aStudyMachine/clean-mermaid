@@ -15,6 +15,7 @@ data.json
 .qoder/
 .trae/
 .agents/
+.zcode/
 .env
 .env.*
 *.local
