@@ -87,6 +87,42 @@ async function main(): Promise<void> {
 	} catch (error) {
 		results.push({ check: "plain mode", error: error instanceof Error ? error.message : String(error) });
 	}
+
+	// 校验数学渲染（katex 随 mermaid 传递引入，渲染抛错即此处记录 error）：
+	// mermaid 把 `$$...$$` 交给 katex.renderToString，输出 MathML。升级 katex
+	// 前后都跑这页，用本条判定有没有坏。
+	try {
+		const math = await renderDiagram({
+			code: 'flowchart TD\n  A["能量公式 $$E = m c^2$$"] --> B[结果]',
+			theme: BUILTIN_THEMES[0],
+			layout: "elk",
+			elkMergeEdges: "default",
+			elkNodePlacement: "default",
+			plain: false,
+		});
+		results.push({
+			check: "katex math",
+			hasMathElement: math.svg.includes("<math"),
+			hasKatexClass: math.svg.includes("katex"),
+			width: Math.round(math.width),
+			height: Math.round(math.height),
+		});
+
+		const mathBox = document.createElement("div");
+		mathBox.style.background = "transparent";
+		mathBox.style.padding = "16px";
+		mathBox.style.margin = "16px 0";
+		mathBox.style.border = "1px dashed #f59e0b";
+		mathBox.style.display = "flex";
+		mathBox.style.justifyContent = "center";
+		const mathImg = document.createElement("img");
+		mathImg.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(math.svg)}`;
+		mathImg.style.width = "520px";
+		mathBox.appendChild(mathImg);
+		out.appendChild(mathBox);
+	} catch (error) {
+		results.push({ check: "katex math", error: error instanceof Error ? error.message : String(error) });
+	}
 }
 
 main()

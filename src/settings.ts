@@ -148,7 +148,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 		if (key === "pngScale") {
 			await this.plugin.updateSettings({ pngScale: Number(value) as PngScale });
 		} else {
-			await this.plugin.updateSettings({ [key]: value } as Partial<CleanMermaidSettings>);
+			await this.plugin.updateSettings({ [key]: value });
 		}
 		if (key === "language") {
 			// 面板自己的文案也要跟着换，声明式定义得重建。

@@ -168,14 +168,14 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		this.canvasEl = canvas;
 
 		if (settings.imageify) {
-			const image = canvas.createEl("img", { cls: "cm-media" });
+			const image = canvas.createEl("img", { cls: "cm-media-image" });
 			image.src = svgToDataUrl(rendered.svg);
 			image.draggable = false;
 			this.mediaEl = image;
 		} else {
 			const document_ = new DOMParser().parseFromString(rendered.svg, "image/svg+xml");
 			const svgEl = document.importNode(document_.documentElement, true) as unknown as SVGElement;
-			svgEl.addClass("cm-media");
+			svgEl.addClass("cm-media-image");
 			canvas.appendChild(svgEl);
 			this.mediaEl = svgEl;
 		}

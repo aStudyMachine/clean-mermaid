@@ -39,18 +39,24 @@ body.theme-dark .cm-card {
 	touch-action: pan-y;
 }
 
-.cm-media {
+.cm-media-image {
 	display: block;
 	flex: 0 0 auto;
-	max-width: none !important;
-	max-height: none !important;
 	transform-origin: center center;
 	user-select: none;
 	-webkit-user-drag: none;
 }
 
+/* 图片化预览的尺寸由我们的缩放结果决定：Obsidian 在内容区给 img 加了 max-width:100%
+   （阅读视图 `.markdown-rendered img`、实时预览 `.markdown-source-view.mod-cm6 img`），
+   这里用更高特异性压回去，不用 !important（0.1.4 复审 CSS LINT 项）。 */
+.cm-stage .cm-canvas .cm-media-image {
+	max-width: none;
+	max-height: none;
+}
+
 .cm-canvas.cm-grabbing,
-.cm-canvas.cm-grabbing .cm-media {
+.cm-canvas.cm-grabbing .cm-media-image {
 	cursor: grabbing;
 }
 
@@ -166,11 +172,15 @@ body.theme-dark .cm-card {
 	cursor: pointer;
 }
 
-.cm-hidden {
-	display: none !important;
+/* 隐藏态按组件点名：特异性 (0,2,0) 压过 `.cm-menu` 自身的 display:flex，不靠 !important
+   （0.1.4 复审 CSS LINT 项）。 */
+.cm-menu.cm-hidden,
+.cm-zoom-badge.cm-hidden {
+	display: none;
 }
 
-/* 实时预览：Obsidian 自己渲染出来的输出，为了让位给卡片而隐藏。 */
+/* 实时预览：Obsidian 自己渲染出来的输出，为了让位给卡片而隐藏。官方输出可能带内联样式，
+   只有 !important 压得住 —— 复审 CSS LINT 报的这条属刻意保留，见 TODO。 */
 .cm-core-hidden {
 	display: none !important;
 }
@@ -180,7 +190,8 @@ body.theme-dark .cm-card {
    `.embed-actions`）一起挡掉。「卡片已经撑起内容」由 `src/livepreview.ts` 打在部件上的
    `.cm-live-guard` 表示，而不是用结构选择器去够 —— 等有了内容才加这个类是刻意为之：首次渲染还在
    进行时，正是官方输出在撑这个块的高度，此刻塌成 0 会让笔记跳两次而不是一次。
-   信任守卫 `.is-guarded` 保持可见。 */
+   信任守卫 `.is-guarded` 保持可见。这里对抗的是官方异步追加、可能带内联样式的输出，
+   !important 刻意保留 —— 复审 CSS LINT 报的这条同理，见 TODO。 */
 .cm-embed-block.cm-lang-mermaid.cm-live-guard > :is(.mermaid-wrapper, .mermaid):not(.is-guarded) {
 	display: none !important;
 }
@@ -284,11 +295,16 @@ body.theme-dark .cm-card {
 
 .cm-modal-media {
 	display: block;
-	max-width: none !important;
-	max-height: none !important;
 	transform-origin: center center;
 	user-select: none;
 	-webkit-user-drag: none;
+}
+
+/* 同卡片画布：主题可能给 `.modal img` 加 max-width:100%，用更高特异性压回去，
+   不用 !important（0.1.4 复审 CSS LINT 项）。 */
+.cm-modal-stage .cm-modal-media {
+	max-width: none;
+	max-height: none;
 }
 
 /* ---------------------------------------------------------------- 设置页 */

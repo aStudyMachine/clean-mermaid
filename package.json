@@ -25,6 +25,9 @@
   "dependencies": {
     "mermaid": "12.1.0"
   },
+  "overrides": {
+    "katex": "^0.18.2"
+  },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "esbuild": "^0.25.0",
