@@ -43,9 +43,9 @@ Every target is resolved before anything is built, so a typo costs nothing. Then
 Obsidian (*Settings → Community plugins → reload*, or `Ctrl+P → Reload plugin without saving`); plugins
 are not hot-reloaded.
 
-Keep your machine's own facts — vault paths, Obsidian version, tool locations — in `.local/env.md`
-(the whole directory is git-ignored; copy `local-env.example.md` to start). Never write them into a
-committed file.
+Keep your machine's own facts — vault paths, Obsidian version, tool locations — in `.local/.env`
+(key–value pairs; the whole directory is git-ignored; copy `env.example` to start). Never write them
+into a committed file.
 
 ## Project layout
 
@@ -71,7 +71,7 @@ committed file.
 | `scripts/deploy.mjs` | One-command deploy: tests → build → copy the three artifacts into one or more named vaults (`--no-check`, `--restart`) |
 | `scripts/resolve-vault.mjs` | Vault name ↔ path resolution via Obsidian's registry (pure matching kept separate from file reads, so it is unit-testable) |
 | `scripts/scan-asar.mjs` | Re-checks the Obsidian internals behind `docs/obsidian-internals.md` after an upgrade |
-| `local-env.example.md` | Template for `.local/env.md` — where each machine records its own paths (never committed) |
+| `env.example` | Template for `.local/.env` — where each machine records its own paths as key–value pairs (never committed) |
 
 ## Guidelines
 

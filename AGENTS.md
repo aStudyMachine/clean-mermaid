@@ -42,7 +42,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 ## 护栏
 
 - 仓库保持无本机路径、无 vault 名、无个人信息；部署脚本只从 `VAULT` 环境变量或命令行参数取路径。
-- 本机路径与版本记在 `.local/env.md`（`.local` 整目录被 gitignore 的 `*.local` 覆盖，模板见 `local-env.example.md`）；需要 vault 路径、Obsidian 版本或 gh 落点时读它，不要问也不要猜。
+- 本机路径与版本记在 `.local/.env`（键值对 + `#` 注释；`.local` 整目录被 gitignore 的 `*.local` 覆盖，模板见 `env.example`）；需要 vault 路径、Obsidian 版本或 gh 落点时读它，不要问也不要猜。
 - 双语文档保持同步：`README.md` ↔ `README.zh-CN.md`、`CONTRIBUTING.md` ↔ `CONTRIBUTING.zh-CN.md`。
 - `CHANGELOG.md` 与 GitHub Release 说明都**面向普通用户**，具体说明与用户相关的功能、修复、行为变化、
   兼容性及必要的使用方式。内部维护记录可以一句概括，不展开实现细节、重构、开发工具、CI / 部署流程、
@@ -71,5 +71,5 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 - `npm run deploy -- <库名> [<库名> …]`：一键跑「单测 → 构建 → 拷贝产物」，库名由 Obsidian 自己的
   vault 注册表换算成路径（`--no-check` 只拷现有产物；`--restart` 部署完重启 Obsidian，仅 Windows，
   会关掉所有库，只在维护者明确要求时用）。目标全部解析成功才开始构建，之后仍需重载插件（不会热更新）。
-  改代码阶段只往 `.local/env.md` 里标为「主要 / 次要验收 / 调试」的两个库部署（库名就是那两行路径的
-  最后一段），要换库先问；本机路径一律从 `.local/env.md` 读，不要写进本文件或仓库任何被跟踪的文件。
+  改代码阶段只往 `.local/.env` 的 `VAULT_PRIMARY` / `VAULT_SECONDARY`（主要 / 次要验收 / 调试）部署，
+  要换库先问；本机路径一律从 `.local/.env` 读，不要写进本文件或仓库任何被跟踪的文件。

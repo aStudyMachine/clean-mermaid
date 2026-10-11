@@ -92,15 +92,25 @@ katex 0.16.47 → 0.18.10 即按此完成，升级前后结果逐字节一致。
 
 ### 部署边界：只有主要验收库是既定的，换库先问
 
-**教训**：`.local/env.md` 的次要验收库标着「未指定……换库前先问」——它不是可自行决定的选项。
+**教训**：`.local/.env` 的次要验收库标着「未指定……换库前先问」——它不是可自行决定的选项。
 
 **对策**：`npm run deploy -- My-Resume` 之外的任何库（包括临时想找个深色库验外观）先问维护者。
+
+### `.env` 键名避开系统预留环境变量，写完用 `node --env-file` 冒烟验证
+
+**教训**：2026-10-11 把 `.local/env.md` 迁移成 `.local/.env` 时，`OS` 键撞上 Windows 系统预留变量
+`OS=Windows_NT`：`node --env-file` 对进程里已存在的变量**不覆盖**（官方语义：环境优先于文件），
+读到的会是系统值而非文件值，且全程无报错。这类冲突静默发生，人眼扫键名不可靠。
+
+**对策**：键名用具体前缀名词（`HOST_OS` 而非 `OS`），避开 `OS` / `PATH` / `USER` 等系统预留名；
+交付前用 `node --env-file=<文件> -e "…"` 逐键断言非空（Node ≥ 20.6）——本次靠这一步当场抓到
+`OS` 被吞。
 
 ## 既有结论索引（引用，不在这里重复维护）
 
 - 动渲染接管路径、`docViewUpdate` 时序、`look: "classic"` 等逆向结论 →
   [docs/obsidian-internals.md](obsidian-internals.md)
 - 壳版本 ≠ 实际运行版本、asar 一律以 Roaming 加载的那份为准 →
-  AGENTS.md「动手前必知的事实」与 `.local/env.md`（`scripts/obsidian-asar.mjs` 已做防呆校验）
+  AGENTS.md「动手前必知的事实」与 `.local/.env`（`scripts/obsidian-asar.mjs` 已做防呆校验）
 - main.js ~5.1 MiB 的取舍与全部复审「不修」理由 → `TODO.md` 第 1 条
 - mermaid 版本锁定与升级验证清单、i18n 文案、`cm-` 命名空间 → AGENTS.md 护栏

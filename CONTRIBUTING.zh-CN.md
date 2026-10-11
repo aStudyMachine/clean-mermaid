@@ -38,8 +38,8 @@ npm run deploy                             # 不带参数：打印可用库名�
 目标名字全部解析成功才会开始跑测试与构建；之后在 Obsidian 里重载插件（*设置 → 第三方插件 → 重新加载*，
 或 `Ctrl+P → Reload plugin without saving`）；插件不支持热更新。
 
-本机自己的信息 —— vault 路径、Obsidian 版本、工具落点 —— 记在 `.local/env.md`（整目录已被
-gitignore，照 `local-env.example.md` 复制一份填写），不要写进任何入库文件。
+本机自己的信息 —— vault 路径、Obsidian 版本、工具落点 —— 记在 `.local/.env`（键值对，整目录已被
+gitignore，照 `env.example` 复制一份填写），不要写进任何入库文件。
 
 ## 目录结构
 
@@ -65,7 +65,7 @@ gitignore，照 `local-env.example.md` 复制一份填写），不要写进任�
 | `scripts/deploy.mjs` | 一键部署：单测 → 构建 → 把三个产物拷进指定的一个或多个库（`--no-check` / `--restart`） |
 | `scripts/resolve-vault.mjs` | 库名 ↔ 路径的换算（读 Obsidian vault 注册表；纯判定与文件读取分开，便于单测） |
 | `scripts/scan-asar.mjs` | Obsidian 升级后重新核对 `docs/obsidian-internals.md` 里的逆向结论 |
-| `local-env.example.md` | `.local/env.md` 的模板 —— 各台机器把自己的路径记在那里，不入库 |
+| `env.example` | `.local/.env` 的模板 —— 各台机器把自己的路径以键值对记在那里，不入库 |
 
 ## 实现约定
 
