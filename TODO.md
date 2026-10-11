@@ -3,7 +3,8 @@
 滚动删除：完成一项即删一行，不留历史。
 
 1. [ ] 跟进下次发版（0.1.5+）后的自动复审：预期 warning 只剩本条记录的「不修」项。0.1.4 复审
-   （6 Warning + 1 Recommendation）的整改已完成在 dev（未发版）。已修：`src/settings.ts:151`
+   （6 Warning + 1 Recommendation）的整改已随 0.1.5 发出（main `d8e0324`，目录侧已进入 Pending
+   扫描）。已修：`src/settings.ts:151`
    的多余类型断言（删掉后 tsc 通过，复审属实）；`styles.css` 的 `!important` 7 → 2（`.cm-media`
    改名 `.cm-media-image` 并用 `.cm-stage .cm-canvas` 提特异性摘 2 处、`.cm-hidden` 作用域化为
    `.cm-menu/.cm-zoom-badge` 专属规则摘 1 处、`.cm-modal-stage .cm-modal-media` 摘 2 处；竞争规则
