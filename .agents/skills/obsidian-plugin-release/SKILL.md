@@ -13,12 +13,13 @@ description: Obsidian 社区插件的「复审整改 → 抬版本 → 出包 �
 
 占位符约定：`<owner>/<repo>` 为 GitHub 仓库、`<plugin-id>` 为 `manifest.json` 的 `id`、`<ver>` 为裸版本号（本流程假定 tag 无 `v` 前缀，与社区目录惯例一致）。
 
-## 硬约束（先记住这四条，违反必然返工）
+## 硬约束（先记住这五条，违反必然返工）
 
 1. **`workflow_dispatch` 只有当 workflow 文件存在于默认分支时才能触发**（触发时可在下拉里选别的 ref）。所以「先把 release workflow 合到默认分支」是跑 dry-run 的前置条件，不是可选项。
 2. **发新 Release 必须同时抬 `manifest.json` 的 `version`，且该文件要合到默认分支** —— 目录读默认分支 HEAD。
 3. **发布后必须手动点「Check for new releases」，否则目录不会重扫。** 没有自动 webhook。
-4. **复审是自动扫描，不是用户评价**，无 blocker 等级；listing 正常发布与报告里有多少 Warning 是两件独立的事。
+4. **复审是自动扫描，不是用户评价**，条目分 Warning / Recommendation / **Error** 三档。Warning 的多少不影响 listing 可用；但**出现 Error 级会把整次 release 复审打成 `Failed`，插件因此在社区目录搜不到**（维护者实测），且只有**发新版本**才能恢复。
+5. **代码侧规则必须在发版前拿到结论**：本地跑不到 Obsidian 官方 linter（`npm test` / `npm run build` 都不含它），而 Failed 的唯一出路是再发一版 —— 事后补救的代价是「一次完整发版周期 + 中间一段搜不到」。用 `Review branch` 预览扫描前置（第 3 节）。
 
 ## 1. 读社区复审报告
 
@@ -27,6 +28,8 @@ description: Obsidian 社区插件的「复审整改 → 抬版本 → 出包 �
 - 报告锚定「默认分支 HEAD + 最新 Release」这一次快照。**含义**：小步多次发版不会让复审更好，攒成一次发版更省事。
 - 条目分 **Warning** 与 **Recommendation** 两组，按「规则名 + 指向的 `file:line`」成组列出。逐条抄成本地可核对的清单，再对每条跑一次 `git grep -n` 定位真实位置。
 - **判定「它扫的是新代码还是缓存」用行号位移，不要用直觉**。实例：某轮删掉两处 `setDynamicTooltip()` 后，同一次扫描里另一文件的告警行号整体 `-2`，说明扫描器确实重跑了新代码。若某条已修但仍被报，先按行号位移确认它读的是哪份代码，再怀疑缓存。
+- **同一判据的反向用法**：改动前后被报的行号**一模一样**、且该行现在的语句根本不属于这条规则（例：`src/viewer.ts:373` 已是 `setCssStyles(...)`、`:374` 是 `this.clampPan();`），说明结论来自缓存、没重算。这时别再改代码，先确认是不是在同版本号上打转 —— release 复审结论按 `version` 缓存，**必须抬版本号才会重算**。
+- **先读条目 summary 的状态词**：`Completed` / `Pending` / `Failed`。账号页顶部出现 "The latest release of this entry failed one or more automated checks" 就是 Failed 态；`Pending` 时正文会带 "These results are incomplete. More checks are still running."，此时读到的缺项（尤其 `Build verification`）不代表失败。
 - 人工提交审核的意见在 `obsidian-releases` 仓库的 PR 里，**不在这份报告中**。要人工意见就单独去取，别假装报告里有。
 - 已经 Pass 的项要列进「本轮必须守住」清单，最常见的是 `Build verification`。
 
@@ -73,14 +76,15 @@ description: Obsidian 社区插件的「复审整改 → 抬版本 → 出包 �
 
 1. 抬版本 + 同步 lock，一次 chore 提交；本地 `npm test` + `npm run build` 通过，记下本机三个产物的 sha256 作为基准。
 2. 推开发分支。
-3. 合到默认分支并推送 —— **这一步同时让 workflow 变得可触发**。
-4. 触发 **dry-run**（不勾 `publish`），等它成功。
-5. **三方 sha256 比对**：本机基准 / CI 日志里「产物哈希」步骤 / release 资产的 digest。三者逐一相同才继续；**不同就停下来上报，不要放宽成「差不多就行」**。
-6. 再触发一次 `publish=true` 建 Release 并签名。
-7. 补中英双语 Release 说明（workflow 的 `notes` 只吃单行，留空时是占位句）。
-8. 到社区目录点「Check for new releases」（见第 6 节）。
+3. **对含改动的 commit 跑 `Review branch` 预览扫描**：`https://community.obsidian.md/account/plugins/<plugin-id>/review-branch`，输入框填 branch / tag / 完整 SHA（留空 = 默认分支），点 `Run preview scan`，等条目从 `Pending` 变 `Completed`，**正文里没有 Error 级才继续**。预览覆盖代码侧（Source code / CSS lint / Behavior / Dependencies），**但不含 `Releases` 与 `Build verification` 两节**（它没有 release 资产可比），所以产物侧结论仍要靠第 6 步的三方哈希。
+4. 合到默认分支并推送 —— **这一步同时让 workflow 变得可触发**。
+5. 触发 **dry-run**（不勾 `publish`），等它成功。
+6. **三方 sha256 比对**：本机基准 / CI 日志里「产物哈希」步骤 / release 资产的 digest。三者逐一相同才继续；**不同就停下来上报，不要放宽成「差不多就行」**。
+7. 再触发一次 `publish=true` 建 Release 并签名。
+8. 补中英双语 Release 说明（workflow 的 `notes` 只吃单行，留空时是占位句）。
+9. 到社区目录点「Check for new releases」，并**等该 version 的条目回到 `Completed` 才算发完**（见第 6 节）。
 
-> **窗口风险**：第 3 步到第 6 步之间，默认分支的 `manifest.json` 已经写新版本、而最新 Release 还是旧版本。目录读的是默认分支 manifest，所以**别把这两步隔一夜**。
+> **窗口风险**：第 4 步到第 7 步之间，默认分支的 `manifest.json` 已经写新版本、而最新 Release 还是旧版本。目录读的是默认分支 manifest，所以**别把这两步隔一夜**。
 
 ## 4. gh 的实测坑
 
@@ -107,20 +111,23 @@ description: Obsidian 社区插件的「复审整改 → 抬版本 → 出包 �
 ## 6. 发完之后：让社区目录重扫
 
 - 回到 `https://community.obsidian.md/account/plugins/<plugin-id>`，点 **「Check for new releases」**。**不点就不会重扫** —— 发 GitHub Release 本身不会通知目录。
-- 点了之后页面通常长期停在 `Checking for releases…`，这是排队中的正常态，不是失败。
-- 该页会 hydrate 很久，甚至反复重载后只剩导航栏。**不要把「我亲眼看到新版本排进 Pending」当完成的必要条件**：服务端已回 `Checking for releases…` 就说明请求被受理。此时如实报告 ——「扫描请求已发出，未能亲眼确认排队」，并建议用户过几分钟自己刷一次。**不要连续敲同一页面**，也不要据此宣称「已触发重扫」。
+- **发版完成的定义是「该 version 的条目回到 `Completed`」，不是「点了重扫」**。留在 `Failed` 就意味着插件在社区搜索里搜不到，而除账号页顶部那行横幅外没有任何告警。条目会先 `Pending`（正文带 "These results are incomplete. More checks are still running."），实测一到两分钟内转 `Completed`。
+- **同版本号重发是死路**：release 复审结论按 `version` 缓存，即使删掉 release 与 tag、用 CI 重建并把 tag 换到新 commit，条目回来时仍带着修复前的行号与旧结论。要重算**必须抬版本号**。
+- 页面只 hydrate 出导航栏时（反复重载也白等），改用同源取载荷：在页面里 `fetch('/account/plugins/<plugin-id>')` → `DOMParser().parseFromString(html,'text/html')` → 读 `details summary` 与 `details` 正文。该站是 Next.js RSC，数据在 flight 载荷里，**没有可直取的 JSON 接口**。
+- 点了之后页面通常长期停在 `Checking for releases…`，这是排队中的正常态，不是失败。若连载荷都读不到，如实报告 ——「扫描请求已发出，未能亲眼确认排队」，并建议用户过几分钟自己刷一次。**不要连续敲同一页面**，也不要据此宣称「已触发重扫」。
 - 下一轮复审报告出来后再回到第 1 节，重点核对上一轮「改了但仍在报」的那几条和必须守住的 Pass 项。
 
 ## 7. 收尾核对清单
 
 - [ ] `manifest.json` / `package.json` / `versions.json` / `package-lock.json` 四处版本一致，lock 由 `npm install` 生成
 - [ ] 动过依赖则 `npm ci` 已验 parity
+- [ ] 发版前对目标 commit 跑过 branch 预览，正文**无 Error 级**
 - [ ] dry-run 成功，且 CI 产物 sha256 与本机**逐一相同**
 - [ ] Release 资产齐（`main.js` / `manifest.json` / `styles.css`），digest 与本机、CI 三方一致
 - [ ] 日志出现 `Attestation created for N subjects`
 - [ ] Release 说明只含变更内容，双语齐
 - [ ] 默认分支与最新 Release 的版本号已收敛（没有停在「manifest 新、Release 旧」的窗口里）
-- [ ] 已点「Check for new releases」，并如实记录是否亲眼确认排队
+- [ ] 已点「Check for new releases」，并**亲眼确认该 version 条目为 `Completed`**（不是「请求已发出」）
 - [ ] 仓库内不出现本机路径、账号名、测试库名；不修项的理由在待办而不是发布物里
 
 ## 8. 未验证项与措辞边界
@@ -129,12 +136,15 @@ description: Obsidian 社区插件的「复审整改 → 抬版本 → 出包 �
 
 - 「`document.createElement` 那条规则要的是挂在父元素上的 `el.createEl(...)`、不认裸全局调用」是基于一次行号位移证据的**推断**，本地跑不到他们的 linter。改法本身等价（父元素 `createEl` 语义即「创建并追加为该节点的子元素」），但别宣称「规则已确认」。
 - 消费端 `gh attestation verify` 是否真能验通，只证到 workflow 日志那一行；跑不通就把这一点标为未证。
-- 「点了重扫之后一定会排进 Pending」只到请求受理层，UI 层未确认。
+- **产物类问题会不会也打成 Error 级，未证实**。已知的 Error 只来自 Source code 规则；`attestation 缺失` 或 `Build verification 不复现` 是否足以让条目变 `Failed`，没有样本 —— 所以「预览 Completed」只保证代码侧干净，不等于正式复审 Completed。
+- 预览扫描与正式复审的等价性，目前只有**一个样本**对得上（同一 commit 的预览 = Completed、无 Error，随后该版本的正式复审结论一致）。别把它当已证明的恒等关系。
 
 ## 9. 落地位置与升级到用户级的判据
 
-本文件当前是**跨 agent 共用副本**，落点 `.agents/skills/obsidian-plugin-release/SKILL.md`（被 `.gitignore` 的 `.agents/` 覆盖，不会进入公开插件仓库），状态为「单仓库实测通过、未经多插件核验」。
+本文件当前是**跨 agent 共用副本**，落点 `.agents/skills/obsidian-plugin-release/SKILL.md`，状态为「单仓库实测通过、未经第二个插件仓库核验」。
 
+- **该落点已纳入版本管理**：`.gitignore` 用 `.agents/*` + `!.agents/skills/` 只放开这一个子目录（整目录 `.agents/` 被排除时，`!.agents/skills/` 是无效的 —— git 不会 descend 进已排除的父目录）。所以本文件**会随仓库公开**，写之前自检一遍：不得含本机路径、账号名、测试库名、凭据前缀之外的授权拓扑细节。
+- **本文件只写流程层**。某个仓库自己的硬门禁（CI 里的 grep 守卫、AGENTS 的发版顺序条目）留在该仓库的 workflow 与入口文档里，**不要复制进本文件** —— 两处维护必然分叉。
 - **各 agent 的加载目录不同，`.agents/skills/` 不是任何 CLI 的自动注册位置**。Qoder 的项目级 Skill 只从 `.qoder/skills/` 读。要让某个 agent 用上本文件，两种做法：在该 agent 一定读到的入口文档（`AGENTS.md` / `CLAUDE.md` 等）里给一行指针；或在它的加载目录放一个**转发壳**（正文只写「读取并遵循 `.agents/skills/obsidian-plugin-release/SKILL.md`」）。**禁止把正文复制一份过去** —— 两份副本必然分叉。
 - 拷贝到新插件仓库时**整目录照搬，不改正文**；若必须改才能用，说明那条事实是仓库专有的，应把它从本文件里**移出**，写进该仓库的 `AGENTS.md` / 待办，而不是在项目级副本上开叉。
 - 允许上移到用户级 Skill 目录的条件，三条同时满足：① 至少在**两个**不同插件仓库逐条复现过第 1–7 节；② 第 8 节的未验证项已被证实或被删掉；③ 正文不含任何仓库专有事实（仓库名、workflow 文件名、某个依赖的个案结论）。
