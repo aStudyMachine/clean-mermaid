@@ -129,6 +129,13 @@ prepends its configuration, so the values you write later take precedence. For i
 plugin injects `look: "classic"` (flat nodes, no drop shadow) and lifts mermaid's 120px node
 width defaults; put `%%{init: {"look":"neo"}}%%` in a block to bring the shadows back for it.
 
+One thing is not an injected value: the plugin draws decision nodes (`A{...}`) as a diamond
+sized to their label. mermaid's own diamond is always a **square** whose side is the label's
+width plus its height, so a single short line of text ends up surrounded by a lot of empty
+space. Switch *Settings → Rendering → Decision node shape* back to "mermaid square" if you want
+the stock geometry; `%% cm:plain %%` blocks always use it. Because this is geometry rather than
+configuration, `%%{init: ...}%%` cannot toggle it per block.
+
 ## Settings
 
 | Group | Options |
@@ -137,7 +144,7 @@ width defaults; put `%%{init: {"look":"neo"}}%%` in a block to bring the shadows
 | Appearance | Light/dark theme, follow Obsidian appearance, fixed theme |
 | Layout | Layout engine (ELK/Dagre), ELK `mergeEdges`, ELK `nodePlacementStrategy`, auto-fit mode, max upscale, max height |
 | Interaction | Ctrl/Cmd + scroll zoom, drag to pan, toolbar visibility, double-click reset |
-| Rendering | Enable Clean Mermaid rendering, render as image, `%% cm: %%` directives |
+| Rendering | Enable Clean Mermaid rendering, render as image, `%% cm: %%` directives, decision node shape (compact diamond / mermaid square) |
 | Export | PNG resolution (1×/2×/3×), PNG background (theme/transparent) |
 | Custom themes | Add, edit (JSON), delete; invalid JSON is rejected and the last valid version stays |
 
@@ -160,7 +167,9 @@ width defaults; put `%%{init: {"look":"neo"}}%%` in a block to bring the shadows
 - **Tested Obsidian version.** `minAppVersion` is `1.14.4` — the only build this takeover has been
   verified against. Live preview relies on undocumented Obsidian selectors and hooks, so older
   builds are not promised to work; see [docs/obsidian-internals.md](docs/obsidian-internals.md).
-- **Disabling** the plugin restores Obsidian's own Mermaid rendering; nothing is patched globally.
+- **Disabling** the plugin restores Obsidian's own Mermaid rendering. Nothing is patched globally;
+  to size decision nodes to their label the plugin changes the diamond drawing inside **its own
+  bundled copy** of mermaid, and Obsidian's own Mermaid renderer is untouched.
 
 ## Development
 
@@ -169,6 +178,7 @@ src/
   main.ts             plugin entry: processor registration, live preview extension, commands
   block.ts            one rendered diagram: card DOM, interactions, exports
   directives.ts       %% cm: %% per-diagram directive parsing (pure, unit-tested)
+  decision-shape.ts   decision node diamond geometry (pure, unit-tested)
   livepreview.ts      live preview takeover of Obsidian's rendered mermaid widgets
   mermaid-runtime.ts  bundled mermaid + config injection + LRU cache
   themes.ts           built-in themes, custom theme parsing/resolution

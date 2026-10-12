@@ -28,6 +28,11 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   被硬编码抬高的内边距），`buildInitConfig` 注入**顶层** `look` 一条就能全图种关掉；同一处还把
   `state` / `flowchart` 的 `minNodeWidth` 放开到 0、`wrappingWidth` 放宽到 400，让节点贴着文字量尺寸。
   动这几行等于改整个插件的观感，取值依据与逆向结论见 [docs/obsidian-internals.md](docs/obsidian-internals.md)。
+- **判断节点（`{}`）的菱形是贴着文字量画的，不走配置**：mermaid 内置的 `question` 恒为正方形
+  （边长 = 文字宽 + 文字高 + 2×padding），一行短标签会被裹进一大片空白；配置里没有任何形状或宽高比
+  开关，所以我们在自己打包那份 mermaid 的形状表上把处理器包一层，只重写几何。改这个观感去
+  `src/decision-shape.ts`（等比贴字 + 宽高比夹在 `DECISION_MIN_ASPECT`–`DECISION_MAX_ASPECT`），
+  门控与四条逆向结论见 [docs/obsidian-internals.md](docs/obsidian-internals.md)。
 - **只声明桌面**：`manifest.json` 的 `isDesktopOnly` 为 `true`，导出（`src/export.ts`）一律走浏览器下载，
   不要再加移动端分支或移动端文案 —— 真机从未实测。
 - **兼容口径按实测写**：`minAppVersion` 取唯一实测过的 Obsidian 版本（现 1.14.4），因为接管依赖未公开的
@@ -66,9 +71,16 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   已知 Error 级规则抄成 grep 的本地兜底，不能替代预览扫描。
 - 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
 - CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
+  **唯一例外**：判断节点的菱形几何靠替换插件**自己打包那份** mermaid 的形状表实现
+  （`installCompactDecisionShape`），因为几何不在任何配置里、`%%{init}%%` 与 CSS 都够不到
+  （依据见 [docs/obsidian-internals.md](docs/obsidian-internals.md)）。Obsidian 官方那份 mermaid 不受影响，
+  设置项「判断节点形状」可整体退回原生正方形，`%% cm:plain %%` 恒用原生。别把它扩大成第二类改写。
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
-- 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `fit.ts` / `themes.ts` / `i18n.ts`。
-- mermaid 版本已固定，升级版本需先在本地验证渲染行为再提交（四套主题着色、ELK/Dagre 差异、指令合并优先级）。
+- 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `decision-shape.ts` / `fit.ts` / `themes.ts` / `i18n.ts`。
+- **mermaid 版本已固定，升级版本需先在本地验证渲染行为再提交（四套主题着色、ELK/Dagre 差异、指令合并优先级）**；
+  升级还会在构建期直接报 `Could not resolve "mermaid/dist/chunks/mermaid.core/chunk-<hash>.mjs"` ——
+  那是判断节点形状补丁依赖的内部 chunk 文件名，**解析失败要当真**，重新核对 `docs/obsidian-internals.md`
+  里「形状表 / `question` 恒为正方形 / `{}` 走 `diamond` 键」三条后再放行，不要改成动态 require 之类把它糊过去。
 - 会话中踩坑、修正了既有认知或建立了新的可复用验证方式后，主动提议把「教训 → 对策」补录进
   [docs/agent-lessons.md](docs/agent-lessons.md)，经维护者确认后落档；与既有文档重复的内容引用而不复制。
 

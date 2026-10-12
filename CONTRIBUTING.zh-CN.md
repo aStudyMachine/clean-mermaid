@@ -48,8 +48,10 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 | `src/main.ts` | 插件入口：注册 mermaid 代码块处理器（`sortOrder -100`）、实时预览扩展、命令与外观监听 |
 | `src/block.ts` | 单个图表：卡片 DOM、缩放平移状态机、`ResizeObserver`、导出 |
 | `src/directives.ts` | `%% cm: ... %%` 指令解析（纯字符串逻辑，有单测） |
+| `src/decision-shape.ts` | 判断节点菱形的几何（纯计算，有单测）—— 取代 mermaid 正方形菱形的紧凑画法 |
+| `src/mermaid-shapes.d.ts` | 形状表所在 mermaid 哈希 chunk 的类型声明；升级 mermaid 时刻意让它解析失败 |
 | `src/livepreview.ts` | 实时预览接管（Obsidian 在该视图硬编码渲染 mermaid，因此替换其已渲染部件） |
-| `src/mermaid-runtime.ts` | 自带 mermaid 运行时：初始化配置、`%%{init}%%` 指令注入、SVG 归一化、LRU 缓存 |
+| `src/mermaid-runtime.ts` | 自带 mermaid 运行时：初始化配置、`%%{init}%%` 指令注入、判断节点形状改写、SVG 归一化、LRU 缓存 |
 | `src/themes.ts` | 内置主题、自定义主题解析与校验、明暗主题选择 |
 | `src/fit.ts` | 纯函数自适应计算（不依赖 Obsidian，便于单测） |
 | `src/viewer.ts` | 全屏查看器（按图定尺寸、可拖拽调整大小；缩放、平移、捏合、适应、导出） |
@@ -57,7 +59,7 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 | `src/i18n.ts` | 语言检测（`auto` 跟随 Obsidian）与插件所有界面文案共用的中英取词 |
 | `src/settings.ts` | 设置模型与设置面板（含自定义主题 JSON 编辑器与界面语言选项） |
 | `styles.css` | 全部样式，类名以 `cm-` 命名空间；明暗通过 `body.theme-dark` 区分 |
-| `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`scripts/resolve-vault.mjs`） |
+| `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`decision-shape.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`scripts/resolve-vault.mjs`） |
 | `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量），以及 README 对比图的捕获链路（`capture-*`、`native-config.ts`）—— 维护者本机的素材工具，不属于贡献流程 |
 | `images/` | README 对比图的 PNG，由上面那条链路生成 |
 | `scripts/extract-obsidian-mermaid.mjs` | 从 Obsidian 的 asar 里取出它自带的 mermaid 构建，供 README 对比图的「原生」一侧使用 —— 维护者本机用，见 `AGENTS.md` |
@@ -119,7 +121,11 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 12. 禁用插件后恢复 Obsidian 自带的 Mermaid 渲染，无残留 DOM、无控制台报错。
 13. 语言设置：切换后卡片工具条、`⋯` 菜单、错误卡片、全屏查看器与各类提示立即换成对应语言，
     命令面板条目名称同样同步更新，无需重载插件。
-14. `git status` 与全文检索确认没有本机路径、token 或个人信息进入暂存区。
+14. 判断节点：flowchart 的 `A{短标签}` 是贴着文字的菱形（宽大于高），文字完整落在菱形内，
+    连边收口贴在菱形边上而不悬空，`classDef` 的填充与描边照常生效。*设置 → 渲染 → 判断节点形状*
+    可在紧凑菱形与 mermaid 正方形之间切换，且已渲染的卡片会立即重绘；`%% cm:plain %%` 块不受该设置影响，
+    恒用 mermaid 的正方形菱形。
+15. `git status` 与全文检索确认没有本机路径、token 或个人信息进入暂存区。
 
 ## 反馈问题
 

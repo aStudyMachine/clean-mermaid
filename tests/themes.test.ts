@@ -33,6 +33,7 @@ const base: CleanMermaidSettings = {
 	enableRendering: true,
 	imageify: true,
 	enableDirectives: true,
+	decisionShape: "compact",
 	pngScale: 2,
 	pngBackground: "theme",
 	customThemes: [],

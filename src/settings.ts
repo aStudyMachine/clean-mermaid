@@ -21,6 +21,8 @@ export type ElkNodePlacement =
 export type PngScale = 1 | 2 | 3;
 export type PngBackground = "theme" | "transparent";
 export type ToolbarMode = "hover" | "always";
+/** 判断节点（`{}`）菱形的画法：贴着文字量的扁菱形，或 mermaid 内置的正方形。 */
+export type DecisionShape = "compact" | "native";
 
 export interface CustomTheme {
 	id: string;
@@ -59,6 +61,7 @@ export interface CleanMermaidSettings {
 	enableRendering: boolean;
 	imageify: boolean;
 	enableDirectives: boolean;
+	decisionShape: DecisionShape;
 
 	pngScale: PngScale;
 	pngBackground: PngBackground;
@@ -90,6 +93,7 @@ export const DEFAULT_SETTINGS: CleanMermaidSettings = {
 	enableRendering: true,
 	imageify: true,
 	enableDirectives: true,
+	decisionShape: "compact",
 
 	pngScale: 2,
 	pngBackground: "theme",
@@ -358,6 +362,21 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 							"允许按图覆盖设置，例如 %% cm:theme=neutral %%、%% cm:layout=dagre %%、%% cm:plain %%。",
 						),
 						control: { type: "toggle", key: "enableDirectives" },
+					},
+					{
+						name: t("Decision node shape", "判断节点形状"),
+						desc: t(
+							"mermaid draws a decision as a square diamond whose side is the label's width plus its height, so a one-line label sits in a lot of empty space. “Compact” keeps the diamond but sizes it to the label. Plain blocks (%% cm:plain %%) always use mermaid's own square.",
+							"mermaid 把判断节点画成正方形菱形，边长等于标签宽度加高度，所以一行文字会被撑进一大片空白。「紧凑」保留菱形、但让尺寸贴着文字量。「原生」即 mermaid 内置画法。plain 块（%% cm:plain %%）恒用原生正方形。",
+						),
+						control: {
+							type: "dropdown",
+							key: "decisionShape",
+							options: {
+								compact: t("Compact diamond (default)", "紧凑菱形（默认）"),
+								native: t("mermaid square", "mermaid 正方形"),
+							},
+						},
 					},
 				],
 			},

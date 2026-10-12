@@ -1,6 +1,19 @@
 import mermaid from "mermaid";
+import {
+	intersect_default,
+	shapes,
+	updateNodeBounds,
+	type ChunkSelection,
+	type ChunkShapeNode,
+} from "mermaid/dist/chunks/mermaid.core/chunk-XC4XBNZT.mjs";
+import { decisionBox, decisionPoints } from "./decision-shape";
 import { SYSTEM_FONT_STACK, themeIdentity, type ThemeDefinition } from "./themes";
-import type { ElkMergeEdges, ElkNodePlacement, LayoutEngine } from "./settings";
+import type {
+	DecisionShape,
+	ElkMergeEdges,
+	ElkNodePlacement,
+	LayoutEngine,
+} from "./settings";
 
 export interface RenderRequest {
 	/** mermaid 源码（已剥掉 `%% cm: %%` 指令）。 */
@@ -10,6 +23,8 @@ export interface RenderRequest {
 	layout: LayoutEngine;
 	elkMergeEdges: ElkMergeEdges;
 	elkNodePlacement: ElkNodePlacement;
+	/** 判断节点菱形的画法，来自设置项。 */
+	decisionShape: DecisionShape;
 	/** plain 模式用 mermaid 自带的 theme/dagre，不加插件样式。 */
 	plain: boolean;
 }
@@ -23,10 +38,115 @@ export interface RenderedDiagram {
 let initialized = false;
 let renderSeq = 0;
 
+/**
+ * 判断节点菱形走哪套几何，需要两个条件同时成立。
+ *
+ * 1. 设置项没被切成 `native`。值读模块变量而不是 mermaid 配置 —— 实测往 `themeVariables`
+ *    或 `flowchart` 段里塞自定义键，渲染期在形状处理器里读回来都是 `undefined`
+ *    （mermaid 按 schema 与主题类的键表把未知键剥掉了，同一条指令里的 `primaryColor` 却活得好好的）。
+ *    它是全局设置、不随单次渲染变化，所以没有并发竞态。
+ * 2. 这次渲染用的是插件主题。载体只能用 `theme` 这个**已知**配置键：非 plain 分支恒定写
+ *    `"base"`，plain 分支写 `"default"` / `"dark"`，而 `%% cm:plain %%` 的定义是「Obsidian
+ *    默认会显示的样子」，正方形菱形也算样子的一部分。
+ */
+const PLUGIN_THEME_ID = "base";
+
+let decisionShapeSetting: DecisionShape = "compact";
+
+let decisionShapePatched = false;
+
+function usesCompactDecisionShape(): boolean {
+	return (
+		decisionShapeSetting === "compact" &&
+		mermaid.mermaidAPI.getConfig().theme === PLUGIN_THEME_ID
+	);
+}
+
+/**
+ * 把 mermaid 的 `question` 形状包一层，画成贴着文字量的扁菱形。
+ *
+ * 为什么只能在这里改：`FlowchartDiagramConfig` 没有任何形状或宽高比开关，`node.padding`
+ * 又是全局统一赋值、classDef 覆盖不了；而卡片是 `<img src="data:image/svg+xml">`，页面 CSS
+ * 进不到 SVG 内部。形状表 `shapes` 是运行时读取的普通对象，是改节点几何的唯一着力点。
+ *
+ * 只改几何、不重写处理器：先让原实现把标签量好、把 classDef 与主题着色都挂好，我们只替换
+ * polygon 的 `points` / `transform`，再同步 `updateNodeBounds` 与 `calcIntersect` ——
+ * 前者决定 dagre 与 ELK 给这个节点留多大位置，后者决定连边在菱形的哪条边上收尾。
+ *
+ * 改的是插件自己打包进 main.js 的私有 mermaid 副本，Obsidian 官方那份 mermaid 渲染不受影响。
+ */
+function installCompactDecisionShape(): void {
+	if (decisionShapePatched) {
+		return;
+	}
+	decisionShapePatched = true;
+
+	// 形状表里 `diam` / `diamond` / `decision` / `question` 是同一个函数的四个别名键，
+	// 而 flowchart 解析器把 `{}` 归到 `diamond`、block 图归到 `question`。
+	// 按「与原 `question` 是同一个函数引用」来挑，四个键一起包，不依赖哪个图种用哪个名字。
+	const shared = shapes.question ?? shapes.diamond;
+	if (!shared) {
+		// mermaid 换了形状表就不硬来；tests/browser 那条断言会把「静默失效」变成测试失败。
+		return;
+	}
+	for (const key of Object.keys(shapes)) {
+		if (shapes[key] === shared) {
+			shapes[key] = wrapWithCompactBox(shared);
+		}
+	}
+}
+
+/** 包一层原处理器：先让它照常量标签、挂 classDef 与主题着色，我们只重写画出来的几何。 */
+function wrapWithCompactBox(
+	original: typeof shapes.question,
+): typeof shapes.question {
+	return async (parent, node, renderOptions) => {
+		const shapeSvg = await original(parent, node, renderOptions);
+		if (usesCompactDecisionShape()) {
+			reshapeToCompactBox(shapeSvg, node);
+		}
+		return shapeSvg;
+	};
+}
+
+function reshapeToCompactBox(shapeSvg: ChunkSelection, node: ChunkShapeNode): void {
+	const polygon = shapeSvg.select("polygon");
+	const label = shapeSvg.select("g.label").node();
+	const shape = polygon.node();
+	// handDrawn 观感下原实现画的是 rough path 而不是 polygon，放过它。
+	if (!label || !shape) {
+		return;
+	}
+
+	let labelWidth: number;
+	let labelHeight: number;
+	try {
+		const bbox = (label as SVGGraphicsElement).getBBox();
+		labelWidth = bbox.width;
+		labelHeight = bbox.height;
+	} catch {
+		return;
+	}
+	if (labelWidth <= 0 || labelHeight <= 0) {
+		return;
+	}
+
+	const next = decisionBox(labelWidth, labelHeight, node.padding ?? 0);
+	const points = decisionPoints(next);
+	shape.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
+	// 局部坐标仍是 0..宽 × -高..0，所以 getBBox() 量到的正好是 next，不必自己写回 node.width。
+	shape.setAttribute("transform", `translate(${-next.width / 2 + 0.5}, ${next.height / 2})`);
+
+	updateNodeBounds(node, polygon);
+	node.calcIntersect = (bounds, point) => intersect_default.polygon(bounds, points, point);
+	node.intersect = (point) => intersect_default.polygon(node, points, point);
+}
+
 function ensureInitialized(): void {
 	if (initialized) {
 		return;
 	}
+	installCompactDecisionShape();
 	mermaid.initialize({
 		startOnLoad: false,
 		securityLevel: "loose",
@@ -56,13 +176,13 @@ function buildInitConfig(request: RenderRequest): Record<string, unknown> {
 	init.look = "classic";
 
 	if (request.plain || !request.theme) {
-		// mermaid 原生外观（大致就是 Obsidian 默认会显示的样子）。
+		// mermaid 原生外观（大致就是 Obsidian 默认会显示的样子）—— 判断节点也就退回原生的正方形。
 		init.theme = request.plain && isDarkDocument() ? "dark" : "default";
 		init.layout = "dagre";
 		return init;
 	}
 
-	init.theme = "base";
+	init.theme = PLUGIN_THEME_ID;
 	init.themeVariables = request.theme.variables;
 	init.layout = request.layout;
 
@@ -164,6 +284,7 @@ function cacheKey(request: RenderRequest): string {
 		request.layout,
 		request.elkMergeEdges,
 		request.elkNodePlacement,
+		request.decisionShape,
 		request.code,
 	].join("\u0000");
 }
@@ -202,6 +323,9 @@ export async function renderDiagram(request: RenderRequest): Promise<RenderedDia
 	const key = cacheKey(request);
 	const id = `cm-${++renderSeq}-${Date.now().toString(36)}`;
 	const code = injectInitDirective(request.code, buildInitConfig(request));
+	// 形状处理器拿不到这次请求的对象，只能靠模块变量递话。它是全局设置、对所有块同值，
+	// 所以并发渲染读到的必然是同一个值；cacheKey 里有它，切设置不会命中旧缓存。
+	decisionShapeSetting = request.decisionShape;
 
 	let svg: string;
 	try {

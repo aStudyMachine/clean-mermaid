@@ -18,6 +18,7 @@ async function main(): Promise<void> {
 			layout: "elk",
 			elkMergeEdges: "default",
 			elkNodePlacement: "default",
+			decisionShape: "compact",
 			plain: false,
 		});
 		const sized = sizeSvg(rendered.svg);

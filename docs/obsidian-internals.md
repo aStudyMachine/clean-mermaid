@@ -79,6 +79,28 @@
   `字数 × 字号 + 2 × padding` 的线性函数。改字号会连带改布局密度，不只是改外观。
 - **核对 `look` 别数 SVG 字符串**：`[data-look="neo"]` 作为 CSS 选择器**永远**出现在内嵌 `<style>` 里，
   数它等于零信息量。要看元素的 `data-look` 属性值，或节点 `rect` 的 computed `filter` 是不是 `none`。
+- **「自定义键能透传」是错觉，实测只到已知键为止**：往注入指令的 `themeVariables` 或 `flowchart` 段里
+  塞一个插件自己的键（`cmDecisionShape`），形状处理器里 `getConfig()` 读回来是 `undefined` ——
+  `themeVariables` 一共 270 个键，全是主题类键表里的；同一条指令里的 `primaryColor` 却活得好好的
+  （插件主题的 `#f1effc` 读得到）。各主题类的 `calculate` 确实按 `Object.keys(overrides)` 全量拷贝
+  （`chunk-VPRB5NB3.mjs:551-558` 等 11 处），但那之后 `getConfig()` 返回的是
+  `assignWithDepth({}, currentConfig)`（同文件 5217-5219），自定义键在这条链上被重新生成掉了。
+  → 想在渲染期把插件的意图递给 mermaid 内部，**只能用已知配置键当载体**；我们用的是 `theme`
+  （非 plain 恒为 `"base"`，plain 为 `"default"` / `"dark"`）。
+- **判断节点恒为正方形，且几何不在配置里**：`question` 形状（`chunk-XC4XBNZT.mjs:3980-3993`）算的是
+  `w = 文字宽 + padding`、`h = 文字高 + padding`、`s = w + h`，四顶点围成 `s × s` —— 边长是「宽 + 高」，
+  所以一行短标签必然被裹进一大片空白，而 `FlowchartDiagramConfig` 全部字段里没有任何形状或宽高比开关。
+  `node.padding` 又由 `config.flowchart?.padding || 8` 全局统一赋值（`diagram-2UJZ2QOL.mjs:1559`），
+  classDef 覆盖不了。→ 改节点几何的唯一着力点只有形状表 `shapes`。
+- **`{}` 走的键名是 `diamond`，不是 `question`**：flowchart 解析器产出 `addVertex(..., "diamond")`
+  （`diagram-2UJZ2QOL.mjs:2512`），block 图才用 `"question"`（`blockDiagram-*.mjs:1869`）。
+  `diam / diamond / decision / question` 在 `generateShapeMap()` 里是同一个函数引用的四个别名键
+  （`chunk-XC4XBNZT.mjs:6371-6375, 6727-6734`）→ 只包 `shapes.question` 对流程图**完全无效**，
+  必须按「与原函数是同一引用」把所有别名键一起换掉。
+- **`getBBox()` 不含元素自身的 transform**：所以 mermaid 的多边形节点用「局部坐标 `0..宽 × −高..0` +
+  `translate(−宽/2, 高/2)`」这套写法，`insertMeasuredNode`（`chunk-FVRAUYC3.mjs:62-67`）随后
+  `getBBox()` 量到的正好是画的形状，dagre 与 ELK 都靠这一步定节点尺寸。改几何时要沿用同一约定，
+  并同步 `node.calcIntersect`（原闭包把 `bounds.width` 同时当宽高用），否则连边会停在旧边界上。
 
 ## 我们的运行时决策（原因，不写在代码里）
 
@@ -86,6 +108,12 @@
   `main.js` 数 MB。
 - `securityLevel: "loose"`：与官方渲染行为对齐，保留标签里的 HTML 与链接。
 - `suppressErrorRendering: true`：渲染失败时由我们自己的错误卡片接管，避免官方把错误图塞进 DOM。
+- **判断节点换几何走「包装 `shapes` 里的菱形处理器」，不换源码也不重写处理器**：
+  `installCompactDecisionShape()` 先 `await` 原实现（标签测量、`classDef` 着色、主题变量全部照旧），
+  再重写 polygon 的 `points` / `transform` 并同步 `updateNodeBounds` 与 `calcIntersect`。
+  代价是这条 import 带 mermaid 构建产物的哈希文件名（`mermaid-shapes.d.ts` 里写了为什么不能改成动态
+  require 兜底）：升级 mermaid 时它会**在构建期解析失败**，逼着重新核对几何契约。
+  改写只发生在插件自己打包的那份副本上，Obsidian 官方 mermaid 不受影响。
 
 ## vault 注册表（`scripts/deploy.mjs` 依赖）
 

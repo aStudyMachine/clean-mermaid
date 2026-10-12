@@ -124,6 +124,11 @@ flowchart LR
 后面写的值会覆盖它。例如插件注入的是 `look: "classic"`（节点扁平、无投影），并放宽了 mermaid
 默认的 120px 节点宽度；想在某张图里找回投影，在块里写 `%%{init: {"look":"neo"}}%%` 即可。
 
+有一项不是注入的配置：插件把判断节点（`A{...}`）画成贴着文字量的菱形。mermaid 自带的菱形恒为
+**正方形**，边长等于标签宽度加高度，所以一行短文字会被裹进一大片空白。想找回原生画法，
+切到*设置 → 渲染 → 判断节点形状*选「mermaid 正方形」；`%% cm:plain %%` 块恒用原生画法。
+它改的是几何而不是配置，因此无法用 `%%{init: ...}%%` 按图切换。
+
 ## 设置
 
 | 分组 | 选项 |
@@ -132,7 +137,7 @@ flowchart LR
 | 外观 | 浅色/深色主题、跟随 Obsidian 明暗、固定主题 |
 | 布局 | 布局引擎（ELK/Dagre）、ELK `mergeEdges`、ELK `nodePlacementStrategy`、自适应方式、最大放大倍率、最大高度 |
 | 交互 | Ctrl/Cmd + 滚轮缩放、拖拽平移、工具条显示方式、双击复位 |
-| 渲染 | 启用 Clean Mermaid 渲染、图片化渲染、`%% cm: %%` 指令支持 |
+| 渲染 | 启用 Clean Mermaid 渲染、图片化渲染、`%% cm: %%` 指令支持、判断节点形状（紧凑菱形 / mermaid 正方形） |
 | 导出 | PNG 分辨率（1×/2×/3×）、PNG 背景（主题/透明） |
 | 自定义主题 | 新增、编辑（JSON）、删除；非法 JSON 会被拒绝并保留上一版生效值 |
 
@@ -153,7 +158,8 @@ flowchart LR
 - **实测过的 Obsidian 版本。** `minAppVersion` 为 `1.14.4` —— 接管逻辑只在这个版本实测过；实时
   预览依赖未公开的 Obsidian 选择器与钩子，因此不承诺更老的版本可用，细节见
   [docs/obsidian-internals.md](docs/obsidian-internals.md)。
-- **禁用插件**后图表恢复为 Obsidian 自带的 Mermaid 渲染，插件没有对全局做任何改写。
+- **禁用插件**后图表恢复为 Obsidian 自带的 Mermaid 渲染。插件对全局不做任何改写；为了让判断节点
+  贴着文字量，它改的是**自己打包的那份 mermaid 副本**里的菱形画法，Obsidian 官方那份 mermaid 不受影响。
 
 ## 开发
 
@@ -162,6 +168,7 @@ src/
   main.ts             插件入口：处理器注册、实时预览扩展、命令
   block.ts            单个图表：卡片 DOM、交互、导出
   directives.ts       `%% cm: %%` 单图指令解析（纯逻辑，有单测）
+  decision-shape.ts   判断节点菱形的几何（纯逻辑，有单测）
   livepreview.ts      实时预览下接管 Obsidian 已渲染的 mermaid 部件
   mermaid-runtime.ts  自带 mermaid + 配置注入 + LRU 缓存
   themes.ts           内置主题、自定义主题解析与校验

@@ -113,6 +113,39 @@ katex 0.16.47 → 0.18.10 即按此完成，升级前后结果逐字节一致。
 目视，且**空列表与已有条目两种状态都看**——同一根因下 `customThemes` 非空时主题编辑器（含
 `width:100%` 的 textarea）会被挤成窄条，只看空列表会漏掉这一半。
 
+## 改第三方打包内部（mermaid 形状表）
+
+### 「自定义配置键能透传」是错觉，mermaid 只把已知键送到渲染期
+
+**教训**：2026-10-12 给判断节点做紧凑菱形时，计划里写「mermaid 对 `themeVariables` 的未知键是透传的」——
+读 `Theme.calculate` 源码确实看到 `Object.keys(overrides).forEach(k => this[k] = overrides[k])`，
+于是认定可以拿它当门控载体。实测打脸：形状处理器里 `getConfig().themeVariables` 有 270 个键、
+全是主题类键表里的，我们那个 `cmDecisionShape` 是 `undefined`；塞进 `flowchart` 段同样被剥掉。
+**源码里「看起来会拷贝」的那一步之后还有 `getConfig()` 的 `assignWithDepth({}, currentConfig)` 重新生成**，
+只读一个函数就下结论不够。
+
+**对策**：要往 mermaid 内部递插件的意图，只用**已知配置键**当载体（本轮用 `theme`：非 plain 恒 `"base"`）。
+判据不是读源码猜，而是在真正消费它的位置实测一条「同指令里的已知键读得到、自定义键读不到」的对照。
+本轮对照实验就是 `tests/browser/render-entry.ts` 里那几个 `check` 项。
+
+### 只包 `shapes.question` 对流程图完全无效——别名键要一起换
+
+**教训**：补丁装上去、图照样渲染、菱形尺寸纹丝不动，没有任何报错。查下去是 flowchart 解析器把 `{}`
+归到 `addVertex(..., "diamond")`，`diam / diamond / decision / question` 是同一个函数的四个别名键，
+`insertNode` 查的是 `shapes.diamond`。
+
+**对策**：按「与原函数是同一引用」遍历整表替换，别按名字点（`for (const k of Object.keys(shapes))
+if (shapes[k] === shared) shapes[k] = wrap(shared)`）。更一般地：**给第三方打包内部打补丁，第一步不是写
+实现，是写一条「补丁确实改变了输出」的断言**——本轮靠验证页量 polygon 尺寸，才在第一次跑就抓到没生效。
+
+### 验证页量几何别取第一个 polygon，箭头标记就是三点 polygon
+
+**教训**：`querySelector("polygon")` 拿到的是 `0,7 11.5,14 11.5,0` —— 箭头 marker，不是节点形状，
+于是断言读出 `null`，看起来像「补丁没生效」，实际是取错了元素。
+
+**对策**：用 mermaid `insertPolygonShape` 打的 `polygon.label-container` 类定位；写量取逻辑时先确认
+拿到的点数与顶点序符合预期。
+
 ## 测试与验证
 
 ### tests/browser 验证页不会自动断言，要真开页面读结果
@@ -162,7 +195,8 @@ katex 0.16.47 → 0.18.10 即按此完成，升级前后结果逐字节一致。
 
 ## 既有结论索引（引用，不在这里重复维护）
 
-- 动渲染接管路径、`docViewUpdate` 时序、`look: "classic"` 等逆向结论 →
+- 动渲染接管路径、`docViewUpdate` 时序、`look: "classic"`、判断节点恒为正方形的 `question` 算法、
+  形状表别名键、`getBBox()` 不含自身 transform 等逆向结论 →
   [docs/obsidian-internals.md](obsidian-internals.md)
 - 壳版本 ≠ 实际运行版本、asar 一律以 Roaming 加载的那份为准 →
   AGENTS.md「动手前必知的事实」与 `.local/.env`（`scripts/obsidian-asar.mjs` 已做防呆校验）

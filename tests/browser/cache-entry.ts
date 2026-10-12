@@ -30,6 +30,7 @@ async function req(theme: AnyTheme, plain = false) {
 		layout: "elk",
 		elkMergeEdges: "default",
 		elkNodePlacement: "default",
+		decisionShape: "compact",
 		plain,
 	});
 }

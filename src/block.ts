@@ -81,6 +81,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			layout,
 			settings.elkMergeEdges,
 			settings.elkNodePlacement,
+			settings.decisionShape,
 			settings.imageify ? "img" : "svg",
 			isDark ? "dark" : "light",
 			this.plugin.language,
@@ -103,6 +104,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			layout,
 			elkMergeEdges: settings.elkMergeEdges,
 			elkNodePlacement: settings.elkNodePlacement,
+			decisionShape: settings.decisionShape,
 			plain,
 		};
 
