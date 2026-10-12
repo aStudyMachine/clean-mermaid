@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 /**
  * README 对比图的捕获服务：托管 tests/browser 下的捕获页，并把页面 POST 回来的 PNG 写进 images/。
  * 收不齐就非零退出 —— 宁可没有图，也不要一张悄悄渲染坏了的图。
+ *
+ * 一轮要收 4 张图 × 2 语言（zh / en）× 2 侧 = 16 张。校验不只看张数：页面把
+ * `compare-<slug>-<lang>-<side>.png` 这个集合报回来，服务端按集合比对，少一张或多一张都失败。
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -13,7 +16,7 @@ const repoRoot = path.resolve(here, "..", "..");
 const imagesDir = path.join(repoRoot, "images");
 const port = Number(process.env.PORT ?? 8787);
 
-const PNG_NAME = /^compare-[a-z0-9-]+-(plugin|native)\.png$/;
+const PNG_NAME = /^compare-[a-z0-9-]+-(zh|en)-(plugin|native)\.png$/;
 const MAX_BODY_BYTES = 32 * 1024 * 1024;
 const MAX_PNG_BYTES = 16 * 1024 * 1024;
 const SIDES = ["plugin", "native"];
@@ -21,7 +24,7 @@ const TIMEOUT_MS = Number(process.env.SHOTS_TIMEOUT ?? 180_000);
 
 /** file → 字节数；同名重复且字节不同即视为不可复现。 */
 const received = new Map();
-/** side → { count, slugs } */
+/** side → { count, files: Set<string> }，由页面 self-report 的 summary 推出应有的文件名集合。 */
 const reported = new Map();
 
 let closing = false;
@@ -93,8 +96,16 @@ async function handleSave(request, response) {
 			return;
 		}
 		const previous = received.get(file);
-		if (previous !== undefined && previous !== bytes.length) {
-			fail(`${file} 被写入两次且字节数不同（${previous} → ${bytes.length}），结果不可复现`);
+		if (previous !== undefined) {
+			// 同一文件被重复 POST：只可能是页面被刷新或开了两次。同一份源码跨页面加载会出现几字节的
+			// 栅格化差异（实测 build-pipeline-zh 81892 → 81895），那是无关正确性的抖动，不该判失败
+			// ——保留先写入的那份并留痕即可，报错会把「刷新一下」变成整轮白跑。
+			// 真正的完整性由 checkComplete 的集合比对负责：缺一张、多一张都过不去。
+			if (previous !== bytes.length) {
+				log(`${file} 被重复写入且字节数不同（${previous} → ${bytes.length}），保留先写入的那份`);
+			}
+			response.statusCode = 200;
+			response.end(JSON.stringify({ ok: true, kept: "first" }));
 			return;
 		}
 		await mkdir(imagesDir, { recursive: true });
@@ -107,8 +118,38 @@ async function handleSave(request, response) {
 	}
 
 	if (payload?.kind === "done") {
-		reported.set(String(payload.side), { count: payload.count, slugs: payload.summary });
-		log(`${payload.side} 报告完成，共 ${payload.count} 张`);
+		const side = String(payload.side);
+		const files = new Set();
+		for (const item of Array.isArray(payload.summary) ? payload.summary : []) {
+			const file = `compare-${item?.slug}-${item?.language}-${side}.png`;
+			if (!PNG_NAME.test(file)) {
+				response.statusCode = 400;
+				response.end(JSON.stringify({ error: `页面报来的条目非法：${JSON.stringify(item)}` }));
+				fail(`${side} 侧报来的条目非法：${JSON.stringify(item)}`);
+				return;
+			}
+			files.add(file);
+		}
+		if (files.size !== payload.count) {
+			response.statusCode = 400;
+			response.end(JSON.stringify({ error: "summary 与 count 不一致" }));
+			fail(`${side} 侧 summary 有 ${files.size} 条，count 却是 ${payload.count}`);
+			return;
+		}
+		reported.set(side, { count: payload.count, files });
+		log(`${side} 报告完成，共 ${payload.count} 张`);
+		// 明细留痕：SVG 字节数一旦跨运行变化，说明抖动出在渲染侧而不是栅格化，排查时省一轮试错。
+		log(
+			`${side} 明细：` +
+				[...files]
+					.map((file) => {
+						const item = payload.summary.find(
+							(entry) => `compare-${entry?.slug}-${entry?.language}-${side}.png` === file,
+						);
+						return `${item?.slug}/${item?.language} svg=${item?.svgBytes} ${item?.width}×${item?.height}`;
+					})
+					.join(" | "),
+		);
 		response.statusCode = 200;
 		response.end(JSON.stringify({ ok: true }));
 		checkComplete();
@@ -125,10 +166,19 @@ function checkComplete() {
 		return;
 	}
 	for (const side of SIDES) {
-		const expected = reported.get(side)?.count;
-		const actual = receivedForSide(side).length;
-		if (expected !== actual) {
-			fail(`${side} 侧应得 ${expected} 张，实际收到 ${actual} 张`);
+		const expected = reported.get(side)?.files ?? new Set();
+		const actual = receivedForSide(side);
+		const missing = [...expected].filter((name) => !received.has(name));
+		const extra = actual.filter((name) => !expected.has(name));
+		if (missing.length > 0 || extra.length > 0) {
+			fail(
+				`${side} 侧产物与报告不符：缺 ${missing.length ? missing.join(" / ") : "无"}；` +
+					`多 ${extra.length ? extra.join(" / ") : "无"}`,
+			);
+			return;
+		}
+		if (expected.size !== reported.get(side)?.count) {
+			fail(`${side} 侧应得 ${reported.get(side)?.count} 张，实际收到 ${actual.length} 张`);
 			return;
 		}
 	}
