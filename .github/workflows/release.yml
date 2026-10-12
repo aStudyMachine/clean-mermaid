@@ -41,6 +41,41 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      # 复审判为 Error 级会把我方发布标成 Failed，插件因此在社区目录搜不到，且只有发新版本
+      # 才能恢复（同版本号重发不重算结论）。这三条对齐已知的 Error 级规则，让同类问题在
+      # 创建 Release 之前就红，而不是等社区扫出来。
+      - name: 代码侧守卫（对齐复审规则）
+        run: |
+          problems=0
+
+          static_style=$(grep -rnE '\.style\.[a-zA-Z]+ = "[^$]' src/ || true)
+          if [ -n "$static_style" ]; then
+            echo "::error::静态字面量 style 赋值（obsidianmd/no-static-styles-assign 判 Error 级）—— 改用 CSS 类或 setCssStyles"
+            printf '%s\n' "$static_style"
+            problems=1
+          fi
+
+          # 摘不掉的 !important 只有两处（对抗官方可能带内联样式的输出，见 styles.css 注释与 TODO）。
+          important=$(grep -cE '^[[:space:]]*[a-z-]+[[:space:]]*:.*!important' styles.css || true)
+          if [ "${important:-0}" -gt 2 ]; then
+            echo "::error::styles.css 的 !important 声明为 ${important} 处，超过已核准的 2 处"
+            grep -nE '^[[:space:]]*[a-z-]+[[:space:]]*:.*!important' styles.css || true
+            problems=1
+          fi
+
+          raw_create=$(grep -rn 'document\.createElement' src/ || true)
+          if [ -n "$raw_create" ]; then
+            echo "::error::document.createElement（obsidianmd/prefer-create-el）—— 改用 Obsidian 的 createEl / createDiv"
+            printf '%s\n' "$raw_create"
+            problems=1
+          fi
+
+          if [ "$problems" -ne 0 ]; then
+            echo "本仓库无 Obsidian 官方 linter，以上是把已知规则抄成本地守卫的兜底；发版前仍应先用社区目录的 branch 预览扫描（见 AGENTS.md）。" >&2
+            exit 1
+          fi
+          echo "代码侧守卫通过"
+
       - name: 校验版本三处一致
         env:
           WANT: ${{ inputs.version }}
