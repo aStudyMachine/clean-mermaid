@@ -146,6 +146,43 @@ if (shapes[k] === shared) shapes[k] = wrap(shared)`）。更一般地：**给第
 **对策**：用 mermaid `insertPolygonShape` 打的 `polygon.label-container` 类定位；写量取逻辑时先确认
 拿到的点数与顶点序符合预期。
 
+## README 对比图的捕获链路（mermaid 文案与栅格化）
+
+### `mermaid.parse` 通过 ≠ 语义正确——三处标签约束只在渲染结果里现形
+
+**教训**：2026-10-13 给对比图做中英双语时，ER 英文关系标签写成 `tagged with`：`mermaid.parse()`
+**返回成功**，但渲染出的图右上角多出一个名为 `with` 的孤立方框——ER 的关系标签与实体名共用同一条
+token 规则（`[A-Za-z_\u00C0-\uFFFF][A-Za-z0-9\-_\[\]().,\u00C0-\uFFFF*]*`，不含空白），
+多写的那个词被静默当成新实体。同一轮还确认了另两处静默失效：状态图状态名含空格或连字符
+（词法 `/^(?:[^:\n\s\-\{]+)/i`）会解析错位；时序图 `actor 用户 as U` 把 `as` 写反，会让消息里引用的
+`U` 找不到声明、另立一条生命线（成图 4 条而非 3 条）。三处都不报错，只有看图才现形。
+
+**对策**：改 flowchart / state / er / sequence 四种图的文案后，判据是**渲染出来的图**，不是
+`mermaid.parse` 是否通过。逐条词法依据与约束清单写在
+[tests/browser/capture-diagrams.ts](../tests/browser/capture-diagrams.ts) 文件头，改文案前先读它；
+可复核方式即 `grep -n "只能" tests/browser/capture-diagrams.ts`。
+
+### 两个捕获页各开一次即可；跨加载的字节抖动不是错误
+
+**教训**：同一轮里 `compare-build-pipeline-zh-plugin.png` 被写入两次且字节数不同（81892 → 81895），
+旧守卫据此直接判「结果不可复现」并中止整轮（原生的 8 张里只写了 5 张）。根因是**同一个页面被打开
+了两次**，而不是图坏了：同一源码跨页面加载本就有极小差异（另一次为 91650 → 91634，肉眼无别；
+SVG 字节数每轮都不同，应来自 SVG 里自动生成的 id）。而该守卫在「每页只开一次」的正常流程里
+**永远不会触发**——它惩罚的是刷新，不是错误。
+
+**对策**：守卫的职责是**收齐**——按 (slug, 语言) 集合比对，缺一张、多一张都失败；重复写入降级为
+留一行警告日志并保留先写入的那份（`tests/browser/capture-server.mjs`）。重跑时两个页面各开一次即可，
+刷新不会再废掉整轮。
+
+### 首张图会赶在字体就绪前量尺寸
+
+**教训**：同一源码下 flowchart-zh 的 PNG 前后为 81892 → 91650 字节、尺寸也不同——首屏渲染时字体
+尚未落定，mermaid 拿到的是回退字体的度量。非首张图不受影响：同轮 `order-state-zh` 与
+`blog-er-zh` 的 PNG 与上一次会话逐字节一致（61871 / 49656）。
+
+**对策**：两个捕获入口在进入渲染循环前 `await document.fonts.ready`（见
+`capture-plugin-entry.ts` / `capture-native-entry.ts`）。新增渲染入口或调整渲染顺序时保留这一句。
+
 ## 测试与验证
 
 ### tests/browser 验证页不会自动断言，要真开页面读结果
@@ -202,3 +239,5 @@ if (shapes[k] === shared) shapes[k] = wrap(shared)`）。更一般地：**给第
   AGENTS.md「动手前必知的事实」与 `.local/.env`（`scripts/obsidian-asar.mjs` 已做防呆校验）
 - main.js ~5.1 MiB 的取舍与全部复审「不修」理由 → `TODO.md` 第 1 条
 - mermaid 版本锁定与升级验证清单、i18n 文案、`cm-` 命名空间 → AGENTS.md 护栏
+- 对比图文案的 mermaid 文法三条约束（状态名 / ER 关系标签 / 时序图 `as`）与逐条词法依据 →
+  `tests/browser/capture-diagrams.ts` 文件头注释
