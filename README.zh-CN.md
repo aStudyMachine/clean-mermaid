@@ -34,25 +34,28 @@ Clean Mermaid 把 vault 里每个 ` ```mermaid ` 代码块渲染成一张干净�
 参数初始化（mermaid 默认主题、不写 `layout` 键，因此走 Dagre）。两侧按同一显示宽度呈现：插件做自适应，
 Obsidian 则把流程图锁在阅读列宽度上，所以像素尺寸本身不在对比结论里。
 
-两侧都由 `tests/browser/capture-diagrams.ts` 里的同一份源码经维护者本机脚本生成，没有手工修图。
+两套图同源于 `tests/browser/capture-diagrams.ts`：一套结构、两套文案，由 `npm run shots` 在
+**v0.1.6** 上生成（4 张图 × 2 语言 × 2 侧 = 16 张）。本页用中文那一套（文件名带 `-zh-`），
+英文 README 用带 `-en-` 的那套，两者只有图内文案不同。渲染逻辑一变，两语言必须一起重跑；
+没有手工修图。
 
 ### 流程图 —— 布局引擎
 
 | Clean Mermaid（ELK） | Obsidian 原生（Dagre） |
 | --- | --- |
-| <img src="images/compare-build-pipeline-plugin.png" alt="Clean Mermaid 以 ELK 渲染的构建流程图：折线绕行、节点尺寸一致" width="300" /> | <img src="images/compare-build-pipeline-native.png" alt="同一张流程图在 Obsidian 内置 Mermaid 下的 Dagre 渲染：曲线连线、排布更紧" width="300" /> |
+| <img src="images/compare-build-pipeline-zh-plugin.png" alt="Clean Mermaid 以 ELK 渲染的构建流程图：折线绕行、节点尺寸一致" width="300" /> | <img src="images/compare-build-pipeline-zh-native.png" alt="同一张流程图在 Obsidian 内置 Mermaid 下的 Dagre 渲染：曲线连线、排布更紧" width="300" /> |
 
 ### 状态图 —— 间距与连线走向
 
 | Clean Mermaid（ELK） | Obsidian 原生（Dagre） |
 | --- | --- |
-| <img src="images/compare-order-state-plugin.png" alt="Clean Mermaid 渲染的订单状态图：自环与转移标签都在画布内" width="300" /> | <img src="images/compare-order-state-native.png" alt="同一张状态图在 Obsidian 内置 Mermaid 下的渲染：曲线连线，一个标签溢出画布" width="300" /> |
+| <img src="images/compare-order-state-zh-plugin.png" alt="Clean Mermaid 渲染的订单状态图：自环与转移标签都在画布内" width="300" /> | <img src="images/compare-order-state-zh-native.png" alt="同一张状态图在 Obsidian 内置 Mermaid 下的渲染：曲线连线，一个标签溢出画布" width="300" /> |
 
 ### ER 图 —— 实体框
 
 | Clean Mermaid（ELK） | Obsidian 原生（Dagre） |
 | --- | --- |
-| <img src="images/compare-blog-er-plugin.png" alt="Clean Mermaid 渲染的三表 ER 图" width="250" /> | <img src="images/compare-blog-er-native.png" alt="同一张三表 ER 图在 Obsidian 内置 Mermaid 下的渲染" width="250" /> |
+| <img src="images/compare-blog-er-zh-plugin.png" alt="Clean Mermaid 渲染的三表 ER 图" width="250" /> | <img src="images/compare-blog-er-zh-native.png" alt="同一张三表 ER 图在 Obsidian 内置 Mermaid 下的渲染" width="250" /> |
 
 ### 时序图 —— 只有配色不同
 
@@ -60,7 +63,7 @@ Obsidian 则把流程图锁在阅读列宽度上，所以像素尺寸本身不�
 
 | Clean Mermaid | Obsidian 原生 |
 | --- | --- |
-| <img src="images/compare-login-sequence-plugin.png" alt="Clean Mermaid 渲染的登录时序图" width="420" /> | <img src="images/compare-login-sequence-native.png" alt="同一张登录时序图在 Obsidian 内置 Mermaid 下的渲染" width="420" /> |
+| <img src="images/compare-login-sequence-zh-plugin.png" alt="Clean Mermaid 渲染的登录时序图" width="420" /> | <img src="images/compare-login-sequence-zh-native.png" alt="同一张登录时序图在 Obsidian 内置 Mermaid 下的渲染" width="420" /> |
 
 ## 安装
 

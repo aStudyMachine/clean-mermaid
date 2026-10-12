@@ -36,26 +36,29 @@ shipped inside Obsidian 1.14.4, initialised with Obsidian's own arguments (merma
 no `layout` key, so Dagre). Both sides are displayed at the same width; the plugin auto-fits while
 Obsidian pins flowcharts to the reading-column width, so absolute pixel size is not part of the claim.
 
-Both panels are generated from the diagram sources in `tests/browser/capture-diagrams.ts` by a
-maintainer script — nothing here is hand-edited or retouched.
+Both sets come from `tests/browser/capture-diagrams.ts` — one structure, two sets of labels — and are
+produced by `npm run shots` at **v0.1.6** (4 diagrams × 2 languages × 2 sides = 16 PNGs). This page
+shows the English set (filenames carry `-en-`); the Chinese README uses the `-zh-` set, and only the
+labels differ. Whenever rendering changes, both languages must be re-run together. Nothing here is
+hand-edited or retouched.
 
 ### Flowchart — layout engine
 
 | Clean Mermaid (ELK) | Obsidian native (Dagre) |
 | --- | --- |
-| <img src="images/compare-build-pipeline-plugin.png" alt="Build-pipeline flowchart rendered by Clean Mermaid with ELK: orthogonal edges routed around the canvas, evenly sized nodes" width="300" /> | <img src="images/compare-build-pipeline-native.png" alt="The same flowchart rendered by Obsidian's built-in Mermaid with Dagre: curved edges, tighter columns" width="300" /> |
+| <img src="images/compare-build-pipeline-en-plugin.png" alt="Build-pipeline flowchart rendered by Clean Mermaid with ELK: orthogonal edges routed around the canvas, evenly sized nodes" width="300" /> | <img src="images/compare-build-pipeline-en-native.png" alt="The same flowchart rendered by Obsidian's built-in Mermaid with Dagre: curved edges, tighter columns" width="300" /> |
 
 ### State diagram — spacing and edge routing
 
 | Clean Mermaid (ELK) | Obsidian native (Dagre) |
 | --- | --- |
-| <img src="images/compare-order-state-plugin.png" alt="Order state diagram rendered by Clean Mermaid: self-loop and transition labels kept inside the canvas" width="300" /> | <img src="images/compare-order-state-native.png" alt="The same state diagram rendered by Obsidian's built-in Mermaid: curved edges, one label overflows the canvas" width="300" /> |
+| <img src="images/compare-order-state-en-plugin.png" alt="Order state diagram rendered by Clean Mermaid: self-loop and transition labels kept inside the canvas" width="300" /> | <img src="images/compare-order-state-en-native.png" alt="The same state diagram rendered by Obsidian's built-in Mermaid: curved edges, one label overflows the canvas" width="300" /> |
 
 ### ER diagram — entity boxes
 
 | Clean Mermaid (ELK) | Obsidian native (Dagre) |
 | --- | --- |
-| <img src="images/compare-blog-er-plugin.png" alt="Three-table ER diagram rendered by Clean Mermaid" width="250" /> | <img src="images/compare-blog-er-native.png" alt="The same ER diagram rendered by Obsidian's built-in Mermaid" width="250" /> |
+| <img src="images/compare-blog-er-en-plugin.png" alt="Three-table ER diagram rendered by Clean Mermaid" width="250" /> | <img src="images/compare-blog-er-en-native.png" alt="The same ER diagram rendered by Obsidian's built-in Mermaid" width="250" /> |
 
 ### Sequence diagram — colours only
 
@@ -64,7 +67,7 @@ typography differ. Kept here so the comparison does not overstate what the layou
 
 | Clean Mermaid | Obsidian native |
 | --- | --- |
-| <img src="images/compare-login-sequence-plugin.png" alt="Login sequence diagram rendered by Clean Mermaid" width="420" /> | <img src="images/compare-login-sequence-native.png" alt="The same sequence diagram rendered by Obsidian's built-in Mermaid" width="420" /> |
+| <img src="images/compare-login-sequence-en-plugin.png" alt="Login sequence diagram rendered by Clean Mermaid" width="420" /> | <img src="images/compare-login-sequence-en-native.png" alt="The same sequence diagram rendered by Obsidian's built-in Mermaid" width="420" /> |
 
 ## Installation
 

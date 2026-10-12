@@ -61,7 +61,7 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 | `styles.css` | 全部样式，类名以 `cm-` 命名空间；明暗通过 `body.theme-dark` 区分 |
 | `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`decision-shape.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`scripts/resolve-vault.mjs`） |
 | `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量），以及 README 对比图的捕获链路（`capture-*`、`native-config.ts`）—— 维护者本机的素材工具，不属于贡献流程 |
-| `images/` | README 对比图的 PNG，由上面那条链路生成 |
+| `images/` | README 对比图的 PNG，由上面那条链路生成。中英各一套：中文文档用文件名带 `-zh-` 的，英文文档用带 `-en-` 的；重跑 `npm run shots` 时**两语言必须一起跑**，否则两套图文案会与源码脱节 |
 | `scripts/extract-obsidian-mermaid.mjs` | 从 Obsidian 的 asar 里取出它自带的 mermaid 构建，供 README 对比图的「原生」一侧使用 —— 维护者本机用，见 `AGENTS.md` |
 | `scripts/obsidian-asar.mjs` | 下面两个脚本共用的 asar 定位：默认取本机**实际运行**的那份，给到更旧的会拦下来（`--allow-stale` 放行） |
 | `scripts/deploy.mjs` | 一键部署：单测 → 构建 → 把三个产物拷进指定的一个或多个库（`--no-check` / `--restart`） |
