@@ -2,7 +2,10 @@
 
 滚动删除：完成一项即删一行，不留历史。
 
-1. [ ] 跟进下次发版（0.1.5+）后的自动复审：预期 warning 只剩本条记录的「不修」项。0.1.4 复审
+1. [ ] 跟进下次发版（0.1.7+）后的自动复审：预期 warning 只剩本条记录的「不修」项。0.1.6
+   （commit `4e06ad4`，2026-10-12）自动复审状态 Completed、无 Error；4 条 Warning 与 1 条
+   Recommendation 均属于本条记录的「不修」项。attestation、依赖漏洞检查与 main.js 字节级构建复现均 Pass。
+   0.1.4 复审
    （6 Warning + 1 Recommendation）的整改已随 0.1.5 发出（main `d8e0324`）。0.1.5 复审新增一条
    **Error 级** `obsidianmd/no-static-styles-assign`（`src/viewer.ts` 查看器把 `left`/`top` 归零写成
    静态字面量赋值），已改用 `modal.setCssStyles({ left: "0px", top: "0px" })`，`5cc7539` 的 branch
