@@ -402,6 +402,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 						name: "",
 						render: (setting: Setting) => {
 							// 这一节有自己的 DOM 结构与配套样式，整段按原样画，不交给框架排版。
+							setting.setClass("cm-theme-settings");
 							setting.settingEl.empty();
 							this.renderCustomThemes(setting.settingEl, t);
 						},

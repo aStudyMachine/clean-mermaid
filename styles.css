@@ -385,11 +385,30 @@ body.theme-dark .cm-card {
 
 /* ---------------------------------------------------------------- 设置页 */
 
+/* 声明式 render 拿到的 settingEl 本身就是 Obsidian 的 `.setting-item` 横向 flex 行
+   （app.css：display:flex; align-items:flex-start，且 .setting-item-info 带 min-width:0）。
+   这一节要上下堆叠三段内容，不压回去的话说明段会把「新增」行的 info 挤成一字一行。
+   特异性与 app.css 的 @container 窄面板规则打平，靠插件样式后加载取胜，不用 !important。 */
+.setting-item.cm-theme-settings {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+/* 纵向间距统一由 `.setting-item` 自带的 row-gap 提供，这里不再叠加 margin；
+   一个主题都没有时整块不占位，免得白留一段 gap。 */
 .cm-theme-list {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	margin-bottom: 12px;
+}
+
+.cm-theme-list:empty {
+	display: none;
+}
+
+/* 上下堆叠后，末尾那行自带的 margin-bottom 会让卡片下内边距比上内边距多 4px。 */
+.setting-item.cm-theme-settings > :last-child {
+	margin-bottom: 0;
 }
 
 .cm-theme-editor {

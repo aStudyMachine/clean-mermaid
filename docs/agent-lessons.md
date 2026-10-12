@@ -94,6 +94,25 @@ byte-for-byte 复现仍要靠 dry-run + 三方 sha256。`release.yml` 另加「�
 katex 0.16.47 → 0.18.10 即按此完成，升级前后结果逐字节一致。overrides 重装只允许目标依赖子树
 重写 lock，其余 resolved 条目不动（镜像源统一迁移是独立事项，见 TODO）。
 
+## 宿主布局与设置面板
+
+### 声明式 `render(setting)` 拿到的是横向 flex 行，画多段块级内容要先压回去
+
+**教训**：`getSettingDefinitions()` 的 `render` 回调给的 `setting.settingEl` 本身就是 Obsidian 的
+`.setting-item`（app.css 1.14.4：`display:flex; align-items:flex-start`，且 `.setting-item-info` 带
+`min-width:0`）。直接往里画多段块级内容，它们就成了同一行里争宽的 flex 兄弟：长说明段吃掉行宽后，
+「新增自定义主题」行的 info 一路缩到约一个汉字宽，而 CJK 文本可在任意字间断行 —— 文案竖排成一字一行。
+`fe1f9b7` 把设置面板迁到声明式 API 时 `renderCustomThemes` 一行没改却坏了观感（迁移前它收到的是设置页
+的块级容器）。这类回归 tsc、vitest、bot 复审全都看不见，只有真机目视能抓到。
+
+**对策**：往 `settingEl` 画多段块级内容前，先 `setting.setClass("cm-…")`，再用
+`flex-direction: column; align-items: stretch` 显式声明堆叠（只压自己这一行，不动全局 `.setting-item`）。
+特异性与 app.css 的 `@container (max-width: 400px)` 规则打平时，靠插件 `styles.css` 后加载取胜，
+不引入 `!important`。取证同下条「样式竞争规则从 asar 取证」，命令
+`node scripts/scan-asar.mjs ".setting-item {"`。改完设置面板要 `npm run deploy -- My-Resume` + 重载插件
+目视，且**空列表与已有条目两种状态都看**——同一根因下 `customThemes` 非空时主题编辑器（含
+`width:100%` 的 textarea）会被挤成窄条，只看空列表会漏掉这一半。
+
 ## 测试与验证
 
 ### tests/browser 验证页不会自动断言，要真开页面读结果
