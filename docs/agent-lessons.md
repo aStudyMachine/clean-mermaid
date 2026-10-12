@@ -47,6 +47,41 @@ dependencies、剪贴板访问即功能本身）每轮都会原样重报；不�
 **对策**：看到依赖告警先 `npm ls <pkg>` 查来源、再 `grep -c <pkg> main.js` 确认是否进产物，
 据此决定处置路径；dev 依赖的公告不进产物，不在复审处置范围内。
 
+### Error 级把复审打成 Failed 等于插件在市场搜不到，而同版本重发不重算
+
+**教训**：0.1.5 发完点重扫，条目回 `Failed`，根因是查看器改动（`278a5a9`）引入
+`obsidianmd/no-static-styles-assign`（Error 级，静态字面量 `modal.style.left = "0px"`）。改完
+`setCssStyles` 后删掉 release 与 tag、用同一版本号 `0.1.5` 重打 —— tag 和产物确实换成了新 commit，
+但复审条目**仍报修复前的 `src/viewer.ts:373` 与 `:374`**：新 commit 的 373 是 `setCssStyles(...)`、
+374 是 `this.clampPan();`，方法调用不可能被这条规则报。维护者实测确认 Failed 期间插件在社区搜索里
+搜不到；抬到 `0.1.6` 重新发布后条目才回到 `Completed`。
+
+**对策**：结论按 `version` 缓存，**要重算必须抬版本号**，原地重发是死路。分辨「新算还是缓存」沿用
+本篇「行号位移」思路的反向用法：被报行号与改动前完全一致、且该行语句已不属于该规则，就是缓存。
+因果与顺序已写进 AGENTS.md「动手前必知的事实」与护栏，这里不重复。
+
+### 代码侧规则本地跑不到，发版前用 `Review branch` 预览扫描挡一道
+
+**教训**：本地没有任何环节会跑 Obsidian 官方 linter —— `npm test` 是纯模块 vitest，
+`npm run build` 是 tsc + esbuild。过去把「CI dry-run 通过」当成发版前最后一道，其实它只验产物哈希，
+对源码规则一无所知，所以 Error 级只能在发出去之后才被发现。
+
+**对策**：`community.obsidian.md/account/plugins/<id>/review-branch` 填 branch / tag / SHA 跑一次，
+不需要 release。实测 `5cc7539` 的预览 = `Completed`、无 Error，与随后 `0.1.6` 正式复审结论一致，
+可当前置门禁。**边界**：预览没有 `Releases` 与 `Build verification` 两节，体积、attestation、
+byte-for-byte 复现仍要靠 dry-run + 三方 sha256。`release.yml` 另加「代码侧守卫」步骤，把这次三条
+已知规则抄成 grep 做硬失败兜底，但它不能替代预览扫描。
+
+### 守卫里的计数要按声明行正则，不能全文 grep
+
+**教训**：给 `!important` 写上限守卫时，`grep -c "!important" styles.css` 得 **7**，会当场误报——
+其中 5 处是注释里在解释「为什么这里不用 / 刻意保留」（本仓库惯例：每处保留都写理由，见
+`styles.css` 注释与 TODO 第 1 条）。真实声明只有 2 处。
+
+**对策**：按声明行计数 `grep -cE '^[[:space:]]*[a-z-]+[[:space:]]*:.*!important' styles.css`
+（当前基线 = 2）。任何「数违规」的守卫写完**先在本地跑一遍确认拿到期望基线**，再进 CI；
+否则第一条 run 就红，排查成本比省下的时间高。
+
 ## 依赖与构建
 
 ### 传递依赖的安全公告：用例先行，再 overrides

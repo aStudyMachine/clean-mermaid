@@ -37,6 +37,15 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   Roaming 那份为准 —— `scripts/scan-asar.mjs` 与 `scripts/extract-obsidian-mermaid.mjs` 不传路径时自动取它，
   传了比它旧的会直接拦下来（`--allow-stale` 才放行）。要判断真实版本看 `%APPDATA%\obsidian\obsidian.log`
   的 `Loading updated app package` 或窗口标题；只查安装目录就下结论，会得到「版本更低、某 API 不存在」的错答案。
+- **复审 Failed 会让插件在社区目录搜不到**（维护者 2026-10-12 实测确认，不是观感问题而是发布阻断）：
+  出现 **Error 级**条目就会把整次 release 复审打成 Failed。而且**同版本号重发不会重算**——结论按
+  `version` 缓存（同一 commit 的 branch 预览是 Completed，release 条目却仍报修复前的旧行号），
+  唯一出路是**发一个新版本**。所以代码侧结论必须前置到发版之前拿到，别指望原地修好。
+- **前置手段是 `Review branch` 预览扫描**：`community.obsidian.md/account/plugins/<id>/review-branch`
+  可对任意 branch / tag / SHA 跑同一套自动检查，不需要 release。但要知道它的边界 —— **预览没有
+  `Releases` 与 `Build verification` 两节**（没有 release 资产可比），所以体积、attestation、
+  byte-for-byte 复现这三项它给不出结论，仍要靠 dry-run + 三方 sha256。已知 Error 级只来自
+  Source code 规则；产物类问题会不会也打成 Error 尚未证实。
 - 更细的逆向结论与 mermaid 12 配置语义：见 [docs/obsidian-internals.md](docs/obsidian-internals.md)。
 
 ## 护栏
@@ -48,6 +57,13 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   兼容性及必要的使用方式。内部维护记录可以一句概括，不展开实现细节、重构、开发工具、CI / 部署流程、
   元数据清理、品牌措辞调整或社区上架 / 复审内容。复审里「不修的项」及其理由、跑过的验证过程
   留在 `TODO.md`。
+- **发版顺序是硬门禁**（任何一步不过就别继续）：抬 `manifest.json` / `package.json` /
+  `versions.json` 三处版本并按 `npm install` 同步 lock → 推 dev → 合默认分支并推送 →
+  **对将发布的 commit 跑 `Review branch` 预览，无 Error 级才继续** → dry-run（`publish` 不勾）
+  比对 CI 与本机三个产物的 sha256 逐一相同 → `publish=true` 建 Release 并签 attestation →
+  补双语发布说明 → 点「Check for new releases」→ **等该 version 的条目回到 Completed 才算发完**
+  （Failed 等于插件在市场搜不到，见「动手前必知的事实」）。`release.yml` 里的「代码侧守卫」是把
+  已知 Error 级规则抄成 grep 的本地兜底，不能替代预览扫描。
 - 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
 - CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
