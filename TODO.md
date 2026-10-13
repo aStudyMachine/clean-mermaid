@@ -2,7 +2,15 @@
 
 滚动删除：完成一项即删一行，不留历史。
 
-1. [ ] 跟进 0.1.7 发版后的自动复审：预期 warning 只剩本条记录的「不修」项。0.1.6
+1. [ ] 评估 `src/mermaid-runtime.ts:61` 的 `mermaidAPI` 弃用 Recommendation：当前调用
+   `getConfig()` 读取本次渲染的主题，用于紧凑菱形门控；报告建议的 `parse` / `render` 并非
+   该配置读取的直接替代，后续确认替代路径并验证 compact / native / plain 行为后再决定迁移。
+   0.1.7（commit `88a01a5`，2026-10-13）正式复审已 Completed、无 Error；4 条 Warning
+   均为下述既有「不修」项，2 条 Recommendation 分别为剪贴板访问与本条待评估的弃用提示。
+   两项产物 attestation、依赖漏洞检查与 main.js 字节级构建复现均 Pass。发布提交的 branch
+   预览 Completed、无 Error；dry-run 与正式发布均成功，本机 / CI / Release 三个产物的
+   sha256 逐项一致。维护者已确认真实库判断节点与自定义主题布局（空列表 / 已有条目）目检通过。
+   0.1.6
    （commit `4e06ad4`，2026-10-12）自动复审状态 Completed、无 Error；4 条 Warning 与 1 条
    Recommendation 均属于本条记录的「不修」项。attestation、依赖漏洞检查与 main.js 字节级构建复现均 Pass。
    0.1.4 复审
