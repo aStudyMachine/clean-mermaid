@@ -21,7 +21,10 @@ pan, fullscreen view, PNG/SVG export and themable colours.
 - **Export** — download a 2× PNG, an SVG, or copy the image / the Mermaid source from the `⋯` menu.
 - **Fullscreen viewer** (`⤢`) — opens filling the viewport (92 % × 88 %), with the diagram scaled to
   fit that window (small diagrams get enlarged, up to 800 %); drag-resizable from any edge or corner,
-  re-fitting the diagram as you resize; pan, wheel/pinch zoom, fit, export.
+  re-fitting the diagram whenever the window changes. The toolbar's adaptive-fit button is a
+  **two-state switch** (on / off): while it is on the diagram keeps fitting the window, and any manual
+  zoom or pan flips it off so your zoom is never overwritten; double-click, press `0`, or click the
+  button again to turn it back on. Pan, wheel/pinch zoom, export.
 - **4 built-in themes** — Clean Light, Clean Dark, Neutral, GitHub Light — plus **custom themes**
   as plain Mermaid `themeVariables` JSON, with validation.
 - **Light/dark aware** — follows the Obsidian appearance automatically and re-renders on switch.

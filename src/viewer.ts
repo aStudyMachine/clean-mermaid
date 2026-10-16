@@ -54,10 +54,13 @@ export class DiagramViewerModal extends Modal {
 	private ty = 0;
 	private resizeState: ResizeState | null = null;
 	/**
-	 * 用户是否手动调过缩放或平移。手动之后窗口尺寸变化不再覆盖他的缩放；
-	 * 点「适应窗口」/双击/按 `0` 会回到自适应（见 `fit()`）。
+	 * 自适应开关，就是工具条上那颗按钮的两个状态：开启时图始终装进窗口，窗口尺寸一变就重算；
+	 * 用户一旦手动缩放或平移就自动关闭，之后窗口变化不再覆盖他的缩放。
+	 * 重新开启的入口是点按钮、双击图、按 `0` —— 三者都走 `fit()`。
 	 */
-	private manual = false;
+	private autoFit = true;
+	/** 自适应开关按钮，用来把两态如实画出来。 */
+	private fitButtonEl!: HTMLButtonElement;
 
 	constructor(app: App, plugin: CleanMermaidPlugin, data: ViewerData) {
 		super(app);
@@ -138,7 +141,9 @@ export class DiagramViewerModal extends Modal {
 		this.zoomLabelEl = toolbar.createSpan({ cls: "cm-modal-zoom-label", text: "100%" });
 
 		addButton("plus", this.plugin.t("Zoom in", "放大"), () => this.zoomBy(1.25));
-		addButton("maximize", this.plugin.t("Fit to view", "适应窗口"), () => this.fit());
+		// 自适应开关：点一下在开启 / 关闭之间切换，开启时立刻把图装进窗口。
+		this.fitButtonEl = addButton("maximize", this.autoFitLabel(), () => this.toggleAutoFit());
+		this.syncAutoFitButton();
 
 		const reset = toolbar.createEl("button", { cls: "cm-btn cm-btn-text", text: "100%" });
 		reset.addEventListener("click", () => this.zoomTo(1));
@@ -207,9 +212,9 @@ export class DiagramViewerModal extends Modal {
 				this.tx = this.dragOrigin.x + (event.clientX - this.dragStart.x);
 				this.ty = this.dragOrigin.y + (event.clientY - this.dragStart.y);
 				this.clampPan();
-				// 贴着边拖不动（图没溢出）时不算手动，别把自动自适应关掉。
+				// 贴着边拖不动（图没溢出）时不算手动，别把自适应开关关掉。
 				if (this.tx !== this.dragOrigin.x || this.ty !== this.dragOrigin.y) {
-					this.manual = true;
+					this.leaveAutoFit();
 				}
 				this.applyTransform();
 			}
@@ -348,7 +353,7 @@ export class DiagramViewerModal extends Modal {
 		modal.style.left = `${Math.round(shiftX)}px`;
 		modal.style.top = `${Math.round(shiftY)}px`;
 
-		if (this.manual) {
+		if (!this.autoFit) {
 			// 用户手动缩放/平移过：缩放保持不动，只按新 stage 尺寸重算平移限位。
 			this.clampPan();
 			this.applyTransform();
@@ -369,7 +374,7 @@ export class DiagramViewerModal extends Modal {
 		}
 		// 居中基准随视口变了，锚定偏移直接归零，窗口回到视口中央。
 		modal.setCssStyles({ left: "0px", top: "0px" });
-		if (this.manual) {
+		if (!this.autoFit) {
 			this.clampPan();
 			this.applyTransform();
 			return;
@@ -401,7 +406,7 @@ export class DiagramViewerModal extends Modal {
 		if (newZoom === oldZoom) {
 			return;
 		}
-		this.manual = true;
+		this.leaveAutoFit();
 		const ratio = newZoom / oldZoom;
 		this.tx = centerX - (centerX - this.tx) * ratio;
 		this.ty = centerY - (centerY - this.ty) * ratio;
@@ -416,7 +421,7 @@ export class DiagramViewerModal extends Modal {
 		if (newZoom === oldZoom) {
 			return;
 		}
-		this.manual = true;
+		this.leaveAutoFit();
 		const ratio = newZoom / oldZoom;
 		this.tx = this.tx * ratio;
 		this.ty = this.ty * ratio;
@@ -427,7 +432,7 @@ export class DiagramViewerModal extends Modal {
 
 	/**
 	 * 复位到自适应：缩放取「刚好装进窗口」的倍数（图小则放大，由 MIN/MAX_SCALE 兜底），
-	 * 同时回到自适应状态 —— 之后窗口尺寸变化会继续跟着重算。
+	 * 同时把自适应开关扳回开启 —— 之后窗口尺寸变化继续跟着重算。
 	 */
 	private fit(): void {
 		const rect = this.stageEl.getBoundingClientRect();
@@ -435,11 +440,47 @@ export class DiagramViewerModal extends Modal {
 		if (!width || !height || !rect.width || !rect.height) {
 			return;
 		}
-		this.manual = false;
+		this.autoFit = true;
+		this.syncAutoFitButton();
 		this.tx = 0;
 		this.ty = 0;
 		this.zoom = clamp(Math.min(rect.width / width, rect.height / height), MIN_SCALE, MAX_SCALE);
 		this.applyTransform();
+	}
+
+	/** 自适应开关的两态文案；按钮只有图标，文案走 title 与 aria-label。 */
+	private autoFitLabel(): string {
+		return this.autoFit
+			? this.plugin.t("Adaptive fit: on (click to turn off)", "自适应：已开启（点击关闭）")
+			: this.plugin.t("Adaptive fit: off (click to turn on)", "自适应：已关闭（点击开启）");
+	}
+
+	/** 把按钮画成当前态：开启时高亮，关闭时与其它工具条按钮一致。 */
+	private syncAutoFitButton(): void {
+		const label = this.autoFitLabel();
+		this.fitButtonEl.toggleClass("cm-btn-active", this.autoFit);
+		this.fitButtonEl.setAttribute("aria-pressed", String(this.autoFit));
+		this.fitButtonEl.setAttribute("aria-label", label);
+		this.fitButtonEl.setAttribute("title", label);
+	}
+
+	/** 工具条按钮：关掉自适应保留当前缩放，或开启它并立刻装进窗口。 */
+	private toggleAutoFit(): void {
+		if (this.autoFit) {
+			this.autoFit = false;
+			this.syncAutoFitButton();
+			return;
+		}
+		this.fit();
+	}
+
+	/** 手动缩放或平移之后自动退出自适应，并让按钮如实反映出来。 */
+	private leaveAutoFit(): void {
+		if (!this.autoFit) {
+			return;
+		}
+		this.autoFit = false;
+		this.syncAutoFitButton();
 	}
 
 	private clampPan(): void {
