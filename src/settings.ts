@@ -529,6 +529,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						theme.dark = value;
 						await plugin.saveSettings();
+						plugin.refreshAll();
 					}),
 			)
 			.addExtraButton((button) =>
