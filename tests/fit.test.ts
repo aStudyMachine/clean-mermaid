@@ -79,47 +79,42 @@ describe("computeFit", () => {
 });
 
 const viewerInput = (over: Partial<ViewerWindowSizeInput> = {}): ViewerWindowSizeInput => ({
-	stageW: 800,
-	stageH: 500,
-	chromeW: 40,
-	chromeH: 90,
+	viewportW: 1920,
+	viewportH: 1080,
 	minW: 480,
 	minH: 360,
-	maxW: 1600,
-	maxH: 1200,
+	widthRatio: 0.92,
+	heightRatio: 0.88,
 	...over,
 });
 
 describe("computeViewerWindowSize", () => {
-	it("sizes the window to the diagram plus chrome", () => {
-		expect(computeViewerWindowSize(viewerInput())).toEqual({ width: 840, height: 590 });
+	it("fills the viewport cap, whatever the diagram size", () => {
+		// 1920 * 0.92 = 1766.4 → 1766；1080 * 0.88 = 950.4 → 950。
+		expect(computeViewerWindowSize(viewerInput())).toEqual({ width: 1766, height: 950 });
 	});
 
-	it("ceils fractional sizes so fit lands exactly on 100%", () => {
-		expect(computeViewerWindowSize(viewerInput({ stageW: 800.25, stageH: 499.5 }))).toEqual({
-			width: 841,
-			height: 590,
-		});
-	});
-
-	it("clamps tiny diagrams up to the minimum window size", () => {
-		expect(computeViewerWindowSize(viewerInput({ stageW: 100, stageH: 80 }))).toEqual({
+	it("never goes below the minimum window size", () => {
+		// 500 * 0.92 = 460、400 * 0.88 = 352，都够不着最小值。
+		expect(computeViewerWindowSize(viewerInput({ viewportW: 500, viewportH: 400 }))).toEqual({
 			width: 480,
 			height: 360,
 		});
 	});
 
-	it("clamps oversized diagrams down to the viewport cap", () => {
-		expect(computeViewerWindowSize(viewerInput({ stageW: 4000, stageH: 3000 }))).toEqual({
-			width: 1600,
-			height: 1200,
+	it("lets the minimum win over a very small viewport", () => {
+		// 视口极小时宁可让窗口略溢出，也不把工具栏挤到不可用。
+		expect(computeViewerWindowSize(viewerInput({ viewportW: 320, viewportH: 240 }))).toEqual({
+			width: 480,
+			height: 360,
 		});
 	});
 
-	it("prefers the viewport cap when the minimum exceeds it", () => {
-		expect(computeViewerWindowSize(viewerInput({ maxW: 300, maxH: 200 }))).toEqual({
-			width: 300,
-			height: 200,
+	it("rounds to whole pixels", () => {
+		// 1001 * 0.92 = 920.92 → 921；701 * 0.88 = 616.88 → 617。
+		expect(computeViewerWindowSize(viewerInput({ viewportW: 1001, viewportH: 701 }))).toEqual({
+			width: 921,
+			height: 617,
 		});
 	});
 });

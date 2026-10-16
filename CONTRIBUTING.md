@@ -122,10 +122,11 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 5. Resizing the pane re-fits the diagram and keeps it centred; a very narrow pane does not overflow.
 6. `Ctrl/Cmd + scroll` zooms around the pointer; plain scroll still scrolls the note; drag pans;
    double-click resets.
-7. `⤢` opens the fullscreen viewer sized to the diagram at 100 % (oversized diagrams get the
-   viewport cap and start zoomed to fit); dragging any edge or corner resizes it with the opposite
-   side anchored and stops at the minimum/viewport limits; zoom/pan/fit/100 %/Esc all behave;
-   closing it leaves the inline diagram untouched.
+7. `⤢` opens the fullscreen viewer filling the viewport, with the diagram scaled to fit that window
+   (small diagrams get enlarged rather than pinned to 100 %). Dragging any edge or corner resizes it
+   with the opposite side anchored and re-fits the diagram — until you zoom or pan by hand, after
+   which your zoom is left alone; it stops at the minimum/viewport limits; zoom/pan/fit/100 %/Esc all
+   behave; closing it leaves the inline diagram untouched.
 8. `⋯`: PNG (with background), SVG, copy image and copy source all work.
 9. `%% cm:theme=neutral %%`, `%% cm:layout=dagre %%` and `%% cm:plain %%` behave as documented and
    never show up in the rendered diagram.

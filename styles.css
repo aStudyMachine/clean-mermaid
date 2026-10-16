@@ -239,10 +239,10 @@ body.theme-dark .cm-card {
 /* ------------------------------------------------------------------- 模态框 */
 
 .modal.cm-modal {
-	/* 默认尺寸只是兜底；打开时 JS 会按「图表 100% 所需」改写为内联宽高。 */
-	width: min(1100px, 92vw);
+	/* 兜底尺寸与打开时 JS 写入的一致（视口上限）；打开后由内联宽高接管。 */
+	width: 92vw;
 	max-width: 92vw;
-	height: min(820px, 88vh);
+	height: 88vh;
 	max-height: 88vh;
 	position: relative;
 }

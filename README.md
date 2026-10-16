@@ -19,8 +19,9 @@ pan, fullscreen view, PNG/SVG export and themable colours.
 - **Image preview** — diagrams are displayed as `<img>` (SVG data URL), so Obsidian themes and
   CSS snippets cannot restyle them; what you see is what you export.
 - **Export** — download a 2× PNG, an SVG, or copy the image / the Mermaid source from the `⋯` menu.
-- **Fullscreen viewer** (`⤢`) — opens sized to the diagram at 100 % (capped by the viewport) and is
-  drag-resizable from any edge or corner; pan, wheel/pinch zoom, fit, export.
+- **Fullscreen viewer** (`⤢`) — opens filling the viewport (92 % × 88 %), with the diagram scaled to
+  fit that window (small diagrams get enlarged, up to 800 %); drag-resizable from any edge or corner,
+  re-fitting the diagram as you resize; pan, wheel/pinch zoom, fit, export.
 - **4 built-in themes** — Clean Light, Clean Dark, Neutral, GitHub Light — plus **custom themes**
   as plain Mermaid `themeVariables` JSON, with validation.
 - **Light/dark aware** — follows the Obsidian appearance automatically and re-renders on switch.

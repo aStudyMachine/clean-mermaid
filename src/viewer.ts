@@ -7,7 +7,7 @@ import { exportDiagramPng, exportDiagramSvg, type ExportBundle } from "./export"
 /** 窗口允许的最小尺寸（px）；再小工具栏就不可用了。 */
 const VIEWER_MIN_WIDTH = 480;
 const VIEWER_MIN_HEIGHT = 360;
-/** 窗口相对视口的上限，与 styles.css 里 .cm-modal 的 max-width / max-height 同一口径。 */
+/** 打开时的默认窗口＝视口的上限；与 styles.css 里 .cm-modal 的 max-width / max-height 同一口径。 */
 const VIEWER_MAX_WIDTH_RATIO = 0.92;
 const VIEWER_MAX_HEIGHT_RATIO = 0.88;
 
@@ -53,6 +53,11 @@ export class DiagramViewerModal extends Modal {
 	private tx = 0;
 	private ty = 0;
 	private resizeState: ResizeState | null = null;
+	/**
+	 * 用户是否手动调过缩放或平移。手动之后窗口尺寸变化不再覆盖他的缩放；
+	 * 点「适应窗口」/双击/按 `0` 会回到自适应（见 `fit()`）。
+	 */
+	private manual = false;
 
 	constructor(app: App, plugin: CleanMermaidPlugin, data: ViewerData) {
 		super(app);
@@ -77,8 +82,8 @@ export class DiagramViewerModal extends Modal {
 		media.draggable = false;
 		this.mediaEl = media;
 
-		// 默认窗口大小＝图表 100% 所需；此处若还量不到布局，rAF 里会重算一次。
-		this.sizeToDiagram();
+		// 默认窗口＝视口上限；图像随后由 fit() 缩放到刚好装进窗口。
+		this.sizeToViewport();
 		this.buildResizeHandles();
 		window.addEventListener("resize", this.onViewportResize);
 
@@ -102,7 +107,8 @@ export class DiagramViewerModal extends Modal {
 		});
 
 		window.requestAnimationFrame(() => {
-			this.sizeToDiagram();
+			// 窗口尺寸不依赖布局，但 fit() 要量 stage，未入树时量不到，等一帧再自适应。
+			this.sizeToViewport();
 			this.fit();
 		});
 	}
@@ -201,6 +207,10 @@ export class DiagramViewerModal extends Modal {
 				this.tx = this.dragOrigin.x + (event.clientX - this.dragStart.x);
 				this.ty = this.dragOrigin.y + (event.clientY - this.dragStart.y);
 				this.clampPan();
+				// 贴着边拖不动（图没溢出）时不算手动，别把自动自适应关掉。
+				if (this.tx !== this.dragOrigin.x || this.ty !== this.dragOrigin.y) {
+					this.manual = true;
+				}
 				this.applyTransform();
 			}
 		});
@@ -228,39 +238,22 @@ export class DiagramViewerModal extends Modal {
 
 	/** 视口允许的窗口上限；用最小值兜底，避免极小视口时上限比下限还小。 */
 	private viewportMaxSize(): { maxW: number; maxH: number } {
-		return {
-			maxW: Math.max(VIEWER_MIN_WIDTH, window.innerWidth * VIEWER_MAX_WIDTH_RATIO),
-			maxH: Math.max(VIEWER_MIN_HEIGHT, window.innerHeight * VIEWER_MAX_HEIGHT_RATIO),
-		};
-	}
-
-	/** 把窗口设为「图表 100% 所需 + 周边开销」，钳在最小尺寸与视口之间。 */
-	private sizeToDiagram(): void {
-		const { width, height } = this.data.rendered;
-		if (!width || !height) {
-			return;
-		}
-		const modal = this.modalEl;
-		const stage = this.stageEl;
-		// 未入树或还没布局时量不到 chrome，交给 rAF 里的重试。
-		if (!modal.isConnected || !modal.offsetWidth || !stage.clientWidth) {
-			return;
-		}
-		const { maxW, maxH } = this.viewportMaxSize();
-		// chrome 用 clientWidth 差值来量：stage 的边框不计入图表空间，
-		// 图表才能以 100% 恰好装满 stage 内容盒（fit 精确等于 1）。
-		const { width: w, height: h } = computeViewerWindowSize({
-			stageW: width,
-			stageH: height,
-			chromeW: modal.offsetWidth - stage.clientWidth,
-			chromeH: modal.offsetHeight - stage.clientHeight,
+		const { width, height } = computeViewerWindowSize({
+			viewportW: window.innerWidth,
+			viewportH: window.innerHeight,
 			minW: VIEWER_MIN_WIDTH,
 			minH: VIEWER_MIN_HEIGHT,
-			maxW,
-			maxH,
+			widthRatio: VIEWER_MAX_WIDTH_RATIO,
+			heightRatio: VIEWER_MAX_HEIGHT_RATIO,
 		});
-		modal.style.width = `${w}px`;
-		modal.style.height = `${h}px`;
+		return { maxW: width, maxH: height };
+	}
+
+	/** 把窗口铺到视口上限；让图装进窗口是 `fit()` 的事。 */
+	private sizeToViewport(): void {
+		const { maxW, maxH } = this.viewportMaxSize();
+		this.modalEl.style.width = `${maxW}px`;
+		this.modalEl.style.height = `${maxH}px`;
 	}
 
 	private buildResizeHandles(): void {
@@ -355,9 +348,14 @@ export class DiagramViewerModal extends Modal {
 		modal.style.left = `${Math.round(shiftX)}px`;
 		modal.style.top = `${Math.round(shiftY)}px`;
 
-		// 缩放保持不动，只按新 stage 尺寸重算平移限位。
-		this.clampPan();
-		this.applyTransform();
+		if (this.manual) {
+			// 用户手动缩放/平移过：缩放保持不动，只按新 stage 尺寸重算平移限位。
+			this.clampPan();
+			this.applyTransform();
+			return;
+		}
+		// 仍在自适应状态：跟着新窗口尺寸重新装进窗口。
+		this.fit();
 	}
 
 	private onViewportResize = (): void => {
@@ -371,8 +369,13 @@ export class DiagramViewerModal extends Modal {
 		}
 		// 居中基准随视口变了，锚定偏移直接归零，窗口回到视口中央。
 		modal.setCssStyles({ left: "0px", top: "0px" });
-		this.clampPan();
-		this.applyTransform();
+		if (this.manual) {
+			this.clampPan();
+			this.applyTransform();
+			return;
+		}
+		// 仍在自适应状态：视口变小把窗口收窄了，图再装一次。
+		this.fit();
 	};
 
 	private pointerDistance(): number {
@@ -398,6 +401,7 @@ export class DiagramViewerModal extends Modal {
 		if (newZoom === oldZoom) {
 			return;
 		}
+		this.manual = true;
 		const ratio = newZoom / oldZoom;
 		this.tx = centerX - (centerX - this.tx) * ratio;
 		this.ty = centerY - (centerY - this.ty) * ratio;
@@ -412,6 +416,7 @@ export class DiagramViewerModal extends Modal {
 		if (newZoom === oldZoom) {
 			return;
 		}
+		this.manual = true;
 		const ratio = newZoom / oldZoom;
 		this.tx = this.tx * ratio;
 		this.ty = this.ty * ratio;
@@ -420,15 +425,20 @@ export class DiagramViewerModal extends Modal {
 		this.applyTransform();
 	}
 
+	/**
+	 * 复位到自适应：缩放取「刚好装进窗口」的倍数（图小则放大，由 MIN/MAX_SCALE 兜底），
+	 * 同时回到自适应状态 —— 之后窗口尺寸变化会继续跟着重算。
+	 */
 	private fit(): void {
 		const rect = this.stageEl.getBoundingClientRect();
 		const { width, height } = this.data.rendered;
 		if (!width || !height || !rect.width || !rect.height) {
 			return;
 		}
+		this.manual = false;
 		this.tx = 0;
 		this.ty = 0;
-		this.zoom = clamp(Math.min(rect.width / width, rect.height / height, 1), MIN_SCALE, MAX_SCALE);
+		this.zoom = clamp(Math.min(rect.width / width, rect.height / height), MIN_SCALE, MAX_SCALE);
 		this.applyTransform();
 	}
 
