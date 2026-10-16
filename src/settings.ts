@@ -48,7 +48,7 @@ export interface CleanMermaidSettings {
 	elkNodePlacement: ElkNodePlacement;
 
 	fitMode: FitMode;
-	/** 放大上限，单位是百分比（150 = 150%）。 */
+	/** 放大上限，单位是百分比（120 = 120%）。 */
 	maxUpscale: number;
 	/** 图表最大高度，占视口高度的百分比。 */
 	maxHeightVh: number;
@@ -82,8 +82,8 @@ export const DEFAULT_SETTINGS: CleanMermaidSettings = {
 	elkNodePlacement: "default",
 
 	fitMode: "width",
-	maxUpscale: 150,
-	maxHeightVh: 80,
+	maxUpscale: 120,
+	maxHeightVh: 100,
 
 	wheelZoom: true,
 	dragPan: true,
