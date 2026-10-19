@@ -2,7 +2,9 @@
 
 滚动删除：完成一项即删一行，不留历史。
 
-1. [ ] 0.1.7（commit `88a01a5`，2026-10-13）正式复审已 Completed、无 Error；4 条 Warning
+1. [ ] 跟进 0.1.8 发版后的自动复审：预期 warning 只剩本条记录的「不修」项，
+   `mermaidAPI` Recommendation 预期消失。0.1.7（commit `88a01a5`，2026-10-13）正式复审已
+   Completed、无 Error；4 条 Warning
    均为下述既有「不修」项，2 条 Recommendation 分别为剪贴板访问与 `mermaidAPI` 弃用；
    后者已改为读取 mermaid 随本次渲染传入的 `renderOptions.config.theme`
    （`src/mermaid-runtime.ts`），compact / native / plain 三种门控已在浏览器验证页复核，
