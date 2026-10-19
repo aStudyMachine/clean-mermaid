@@ -128,6 +128,21 @@ katex 0.16.47 → 0.18.10 即按此完成，升级前后结果逐字节一致。
 判据不是读源码猜，而是在真正消费它的位置实测一条「同指令里的已知键读得到、自定义键读不到」的对照。
 本轮对照实验就是 `tests/browser/render-entry.ts` 里那几个 `check` 项。
 
+### 形状处理器能直接拿到本次渲染的 config，不必读弃用的 `mermaidAPI`
+
+**教训**：2026-10-19 处理 0.1.7 复审的 `mermaidAPI is deprecated` Recommendation 时，先想的是按渲染
+id 建映射或串行化渲染，把 `theme` 递进 `shapes.question`。实际 mermaid 调形状处理器时传了第三个参数
+`renderOptions`：flowchart 的 `insertNode` 经 `createGraphWithElements` 拿到 `{ config, dir }`（Dagre 是
+`{ config: siteConfig, dir }`，block 与 C4 也带 `config`），而 `config` 是本次渲染已合并 init 指令的
+配置。`parse` 虽然也返回一个 `config`，但那是 frontmatter / 指令层的配置，且要再解析一遍；`render`
+只返回 SVG。绕开已弃用的 `mermaidAPI` 不需要 side channel，直接读 `renderOptions?.config?.theme` 就够。
+
+**对策**：改 mermaid 内部前先读形状处理器的签名和所有调用点，优先用 mermaid 已经传进来的上下文；
+不要为消弃用警告去深引 `mermaid/dist/config.js`，那只是换成一个更脆的内部依赖。节点形状的
+`renderOptions` 由 `insertNode` 统一传入（cluster 的 `insertCluster` 不传，但 cluster 不走 `question`），
+缺失时保守关闭紧凑几何、退回原生。门控证据仍是 `tests/browser/render-entry.ts` 的 compact / plain /
+native 三项；0.1.8 复审里这条 Recommendation 已经消失。
+
 ### 只包 `shapes.question` 对流程图完全无效——别名键要一起换
 
 **教训**：补丁装上去、图照样渲染、菱形尺寸纹丝不动，没有任何报错。查下去是 flowchart 解析器把 `{}`
