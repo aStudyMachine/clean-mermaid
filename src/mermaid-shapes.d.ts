@@ -31,10 +31,17 @@ declare module "mermaid/dist/chunks/mermaid.core/chunk-XC4XBNZT.mjs" {
 		empty(): boolean;
 	}
 
+	/** 渲染期由 mermaid 传入的配置快照；`theme` 已合并本次 init 指令。 */
+	export interface ChunkShapeRenderOptions {
+		config?: {
+			theme?: string;
+		};
+	}
+
 	export type ChunkShapeHandler = (
 		parent: ChunkSelection,
 		node: ChunkShapeNode,
-		renderOptions?: unknown,
+		renderOptions?: ChunkShapeRenderOptions,
 	) => Promise<ChunkSelection>;
 
 	export const shapes: Record<string, ChunkShapeHandler>;

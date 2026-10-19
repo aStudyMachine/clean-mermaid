@@ -5,6 +5,7 @@ import {
 	updateNodeBounds,
 	type ChunkSelection,
 	type ChunkShapeNode,
+	type ChunkShapeRenderOptions,
 } from "mermaid/dist/chunks/mermaid.core/chunk-XC4XBNZT.mjs";
 import { decisionBox, decisionPoints } from "./decision-shape";
 import { SYSTEM_FONT_STACK, themeIdentity, type ThemeDefinition } from "./themes";
@@ -48,6 +49,10 @@ let renderSeq = 0;
  * 2. 这次渲染用的是插件主题。载体只能用 `theme` 这个**已知**配置键：非 plain 分支恒定写
  *    `"base"`，plain 分支写 `"default"` / `"dark"`，而 `%% cm:plain %%` 的定义是「Obsidian
  *    默认会显示的样子」，正方形菱形也算样子的一部分。
+ *
+ * 主题读 mermaid 随本次渲染传给形状处理器的 `renderOptions.config`，不碰已弃用的
+ * `mermaid.mermaidAPI.getConfig()`：前者是本次渲染的配置快照（已合并 init 指令），后者是
+ * 全局状态，还会让复审对 `mermaidAPI` 报弃用。
  */
 const PLUGIN_THEME_ID = "base";
 
@@ -55,10 +60,12 @@ let decisionShapeSetting: DecisionShape = "compact";
 
 let decisionShapePatched = false;
 
-function usesCompactDecisionShape(): boolean {
+function usesCompactDecisionShape(
+	renderOptions: ChunkShapeRenderOptions | undefined,
+): boolean {
 	return (
 		decisionShapeSetting === "compact" &&
-		mermaid.mermaidAPI.getConfig().theme === PLUGIN_THEME_ID
+		renderOptions?.config?.theme === PLUGIN_THEME_ID
 	);
 }
 
@@ -102,7 +109,7 @@ function wrapWithCompactBox(
 ): typeof shapes.question {
 	return async (parent, node, renderOptions) => {
 		const shapeSvg = await original(parent, node, renderOptions);
-		if (usesCompactDecisionShape()) {
+		if (usesCompactDecisionShape(renderOptions)) {
 			reshapeToCompactBox(shapeSvg, node);
 		}
 		return shapeSvg;
