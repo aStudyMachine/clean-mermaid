@@ -4,6 +4,6 @@
   "version": "0.1.8",
   "minAppVersion": "1.14.4",
   "description": "Render Mermaid diagrams as clean cards with ELK layout, auto-fit and centering, zoom and pan, image preview, PNG/SVG export, and built-in or custom themes.",
-  "author": "Clean Mermaid contributors",
+  "author": "Marcus Wu",
   "isDesktopOnly": true
 }
