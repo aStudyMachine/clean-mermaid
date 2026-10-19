@@ -60,7 +60,7 @@ into a committed file.
 | `src/mermaid-runtime.ts` | Bundled mermaid runtime: init config, `%%{init}%%` injection, decision-node shape patch, SVG normalisation, LRU cache |
 | `src/themes.ts` | Built-in themes, custom theme parsing/validation, theme resolution for light/dark |
 | `src/fit.ts` | Pure auto-fit math (easy to unit test — no Obsidian dependency) |
-| `src/viewer.ts` | Fullscreen modal viewer (sized to the diagram, drag-resizable; zoom, pan, pinch, fit, export) |
+| `src/viewer.ts` | Fullscreen modal viewer (viewport-sized, drag-resizable, adaptive fit; zoom, pan, pinch, export) |
 | `src/export.ts` | PNG rasterisation, SVG output, clipboard |
 | `src/i18n.ts` | Language detection (`auto` follows Obsidian) and the bilingual picker behind every label the plugin draws |
 | `src/settings.ts` | Settings model + settings tab (custom theme JSON editor, UI language option) |

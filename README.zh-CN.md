@@ -178,7 +178,7 @@ src/
   mermaid-runtime.ts  自带 mermaid + 配置注入 + LRU 缓存
   themes.ts           内置主题、自定义主题解析与校验
   fit.ts              纯函数自适应计算
-  viewer.ts           全屏缩放/平移弹窗，按图定尺寸、可拖拽调整大小
+  viewer.ts           全屏缩放/平移弹窗，铺满视口、可拖拽调整大小
   export.ts           PNG/SVG/剪贴板导出
   i18n.ts             语言检测与中英取词，供全部界面文案使用
   settings.ts         设置模型与设置面板

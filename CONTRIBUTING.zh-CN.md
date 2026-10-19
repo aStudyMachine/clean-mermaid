@@ -54,7 +54,7 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 | `src/mermaid-runtime.ts` | 自带 mermaid 运行时：初始化配置、`%%{init}%%` 指令注入、判断节点形状改写、SVG 归一化、LRU 缓存 |
 | `src/themes.ts` | 内置主题、自定义主题解析与校验、明暗主题选择 |
 | `src/fit.ts` | 纯函数自适应计算（不依赖 Obsidian，便于单测） |
-| `src/viewer.ts` | 全屏查看器（按图定尺寸、可拖拽调整大小；缩放、平移、捏合、适应、导出） |
+| `src/viewer.ts` | 全屏查看器（铺满视口、可拖拽调整大小、自适应；缩放、平移、捏合、导出） |
 | `src/export.ts` | PNG 栅格化、SVG 输出、剪贴板 |
 | `src/i18n.ts` | 语言检测（`auto` 跟随 Obsidian）与插件所有界面文案共用的中英取词 |
 | `src/settings.ts` | 设置模型与设置面板（含自定义主题 JSON 编辑器与界面语言选项） |

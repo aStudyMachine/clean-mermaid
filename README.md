@@ -190,7 +190,7 @@ src/
   mermaid-runtime.ts  bundled mermaid + config injection + LRU cache
   themes.ts           built-in themes, custom theme parsing/resolution
   fit.ts              pure auto-fit math
-  viewer.ts           fullscreen pan/zoom modal, sized to the diagram and drag-resizable
+  viewer.ts           fullscreen pan/zoom modal, viewport-sized and drag-resizable
   export.ts           PNG/SVG/clipboard export helpers
   i18n.ts             language detection + the bilingual picker used by every label
   settings.ts         settings model + settings tab
