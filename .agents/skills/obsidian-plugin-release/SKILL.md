@@ -59,6 +59,58 @@ description: Obsidian 社区插件的「复审整改 → 抬版本 → 出包 �
 - 有用的事实：**插件版本号不进打包产物**（抬 `version` 后 `main.js` 字节不变，可 grep 旧版本号确认）。这条可当归因基线 —— 若抬版本后 `main.js` 哈希变了，一定是别的原因。
 - `CHANGELOG.md` 与 GitHub Release 说明**只写变更内容**（新增 / 修复 / 变更 / 兼容性）。「本轮不修的项及其理由」「跑过的验证过程」留在仓库待办，不要塞进发布物：在一个没有用户可见变化的补丁版发布说明里放三十行内部申辩，读者只会困惑。
 
+### Release 说明的统一格式（0.1.8 起）
+
+GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间空一行：
+
+```markdown
+## English
+
+### New
+
+- ...
+
+### Changed
+
+- ...
+
+### Fixed
+
+- ...
+
+### Compatibility
+
+- ...
+
+## 简体中文
+
+### 新增
+
+- ...
+
+### 变更
+
+- ...
+
+### 修复
+
+- ...
+
+### 兼容性
+
+- ...
+```
+
+- 章节按需出现，顺序固定为 New → Changed → Fixed → Compatibility（中文对应新增 → 变更 →
+  修复 → 兼容性），空章节省略；兼容性写**该版本发布当时**的真实最低版本与平台，不用当前
+  状态改写历史。
+- 只写普通用户能直接感知的功能、行为变化与兼容性。安全修复可以保留一条简短的
+  `Fixed` / `修复`（0.1.5 的 KaTeX 公告即此）；内部维护、构建证明、安装步骤、README
+  链接、体积说明不写进 Release 说明。
+- 没有用户可见变化的版本（如 0.1.3 / 0.1.6）写一句双语「仅内部维护，无用户可见变化」加
+  兼容性，不硬凑 New / Changed 条目。
+- 当前范本是 0.1.8 的 Release 正文；历史 0.1.0–0.1.7 已按此格式回填。
+
 ## 3. 出包：CI + dry-run 先行
 
 ### workflow 设计
@@ -125,7 +177,7 @@ description: Obsidian 社区插件的「复审整改 → 抬版本 → 出包 �
 - [ ] dry-run 成功，且 CI 产物 sha256 与本机**逐一相同**
 - [ ] Release 资产齐（`main.js` / `manifest.json` / `styles.css`），digest 与本机、CI 三方一致
 - [ ] 日志出现 `Attestation created for N subjects`
-- [ ] Release 说明只含变更内容，双语齐
+- [ ] Release 说明只含用户可见变更，英文在前、中文在后（New / Changed / Fixed / Compatibility）
 - [ ] 默认分支与最新 Release 的版本号已收敛（没有停在「manifest 新、Release 旧」的窗口里）
 - [ ] 已点「Check for new releases」，并**亲眼确认该 version 条目为 `Completed`**（不是「请求已发出」）
 - [ ] 仓库内不出现本机路径、账号名、测试库名；不修项的理由在待办而不是发布物里

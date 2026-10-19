@@ -62,6 +62,10 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   兼容性及必要的使用方式。内部维护记录可以一句概括，不展开实现细节、重构、开发工具、CI / 部署流程、
   元数据清理、品牌措辞调整或社区上架 / 复审内容。复审里「不修的项」及其理由、跑过的验证过程
   留在 `TODO.md`。
+- GitHub Release 说明在「面向普通用户」之上另有固定格式：**英文在前、中文在后**，按
+  New / Changed / Fixed / Compatibility（中文新增 / 变更 / 修复 / 兼容性）分节，只写用户能直接
+  感知的变化；无用户可见变化的版本写一句双语「仅内部维护」。模板与细则见
+  [.agents/skills/obsidian-plugin-release/SKILL.md](.agents/skills/obsidian-plugin-release/SKILL.md)。
 - **发版顺序是硬门禁**（任何一步不过就别继续）：抬 `manifest.json` / `package.json` /
   `versions.json` 三处版本并按 `npm install` 同步 lock → 推 dev → 合默认分支并推送 →
   **对将发布的 commit 跑 `Review branch` 预览，无 Error 级才继续** → dry-run（`publish` 不勾）
