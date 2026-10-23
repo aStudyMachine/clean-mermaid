@@ -208,17 +208,18 @@ mermaid 专属键在 Pele 下**无落点**，只能合并进 surface 系列。
 
 | 文件 | 现状 | 处理 |
 | --- | --- | --- |
-| `src/mermaid-runtime.ts`（355 行） | mermaid 初始化 + init 指令注入 + 形状表补丁 + 缓存 | **整体重写**，预计 120–150 行：`render()` + 变量内联 + `normalizeSvg` + LRU 缓存；async 签名可改同步 |
+| `src/mermaid-runtime.ts`（307 行） | mermaid 初始化 + init 指令注入 + 形状表补丁 + 缓存 | 换成 `src/renderer-pele.ts` 实现 `RenderEngine`；本文件删除 |
+| `src/render-engine.ts` / `src/renderer.ts` / `src/svg-utils.ts` | 阶段 0 已落地：契约 / 组合根 / 引擎无关的 SVG 处理 | `renderer.ts` 换 import；契约只加 Pele 真需要的成员（如 `forgetTextWidths`） |
 | `src/decision-shape.ts`（76 行） | 扁菱形几何 | **删除**（除非决定做 SVG 后处理保留观感） |
 | `src/mermaid-shapes.d.ts`（58 行） | chunk 哈希 import 的类型声明 | **删除** |
 | `src/themes.ts`（272 行） | 42 个 themeVariables 键 × 4 套 | 重做：11 变量映射 + 4 套主题重配色 + 自定义主题改格式 |
 | `src/settings.ts`（592 行） | 含 `layoutEngine` / `elkMergeEdges` / `elkNodePlacement` / `decisionShape` / themeVariables JSON 编辑器 | 移除 4 个设置项、重做主题编辑器；`migrateSettings` 要处理旧配置（忽略而非报错） |
 | `src/directives.ts`（54 行） | `%% cm:theme= %%` / `layout=` / `plain` | `layout` 作废；`theme` / `plain` 语义保留（`plain` 改为「Pele 默认外观」） |
-| `src/block.ts`（575 行） | 双路径：命中缓存同步 build / 未命中 await | 合并为同步单路径（`peekRendered` 与 `renderDiagram` 可合一）；抖动隐患根除 |
+| `src/block.ts`（576 行） | 双路径：命中缓存同步 build / 未命中 await | 合并为同步单路径（`peekRendered` 与 `renderDiagram` 可合一）；抖动隐患根除 |
 | `src/livepreview.ts`（237 行） | 事后替换官方部件 + `docViewUpdate` 同帧 + `mermaid-vault-trust` 信任门 | 接管骨架保留；**信任门必须在 1.15 上重核**（官方已删除该设置与闸门） |
 | `src/main.ts`（148 行） | 注册处理器 / 编辑器扩展 / `css-change` 重绘 | `css-change` 处理可简化（Pele 变量可 CSS 驱动），但字体变更仍需 `forgetTextWidths()` |
-| `src/export.ts`（192 行） | SVG → canvas → PNG / 下载 | **不用动**（纯 SVG 字符串 + viewBox） |
-| `src/viewer.ts`（511 行） | 全屏查看器 | **不用动** |
+| `src/export.ts`（192 行） | SVG → canvas → PNG / 下载 | 阶段 0 起已不依赖任何引擎（只靠 `render-engine` 类型 + `svg-utils`） |
+| `src/viewer.ts`（511 行） | 全屏查看器 | 同上，**不用动** |
 | `src/fit.ts`（88 行） | 纯缩放计算 | **不用动** |
 | `src/i18n.ts` | 文案 | 需删/改与布局引擎、判断节点形状相关的条目 |
 | `styles.css` | 卡片 / 工具条 / live-guard | 主体不动；`.cm-media` 内部 SVG 的类名从 mermaid 变成 `pele-*`，需核查有无依赖 mermaid 类名的规则 |
@@ -236,19 +237,40 @@ mermaid 专属键在 Pele 下**无落点**，只能合并进 surface 系列。
 
 ### 阶段 0 —— 现在就能做，且不改变任何行为
 
+**状态：已完成**（2026-10-23）。
+
 **目标**：把「渲染」抽成一个薄接口，让上层不直接依赖 mermaid 类型。
 
-- 新增 `src/renderer.ts`，只暴露 `renderDiagram(request): { svg, width, height }`（同步或异步由实现决定）、
-  `clearRenderCache()`、`invalidateTextMetrics()`。
-- `block.ts` / `livepreview.ts` 只依赖这个接口，不 import `mermaid`。
-- 验收：`npm test` + `npm run test:browser` 全绿，产物与改前**行为一致**（截图对比无差异）。
-- 价值：把「替换渲染器」从「重写半个插件」压缩成「换一个实现文件」。
+实际落地（与本文初稿的差异已在此修正）：
+
+- `src/render-engine.ts`：**纯类型 + `RenderEngine` 接口**，无任何运行时 import。`RenderRequest` /
+  `RenderedDiagram` 从 `mermaid-runtime.ts` 搬到这里，成为引擎无关的契约。
+- `src/svg-utils.ts`：`svgToDataUrl()` 与 `normalizeSvg()` 搬到这里 —— 换引擎后这两步依然要做。
+- `src/renderer.ts`：组合根，只导出 `peekRendered()` / `renderDiagram()`；换引擎改这一个文件的 import。
+- `src/mermaid-runtime.ts`：仍是唯一 import `mermaid` 的文件，导出 `mermaidEngine: RenderEngine`。
+- 上层（`block.ts` / `export.ts` / `viewer.ts` / `tests/browser/*`）改走 `renderer.ts` + `render-engine.ts`。
+- 初稿提的 `clearRenderCache()` / `invalidateTextMetrics()` **没做**：当前没有任何调用方（「强制重画」
+  只是绕过 signature 短路，不要求真的重跑渲染器），加进来就是死代码。换到 Pele 时它需要
+  `forgetTextWidths()` 才能重测字体，届时有真实调用方再往 `RenderEngine` 加。
+
+**验收结果**：`tsc` 通过；`npm test` 73 项全绿；`npm run test:browser` 两页在浏览器里跑通
+（theme/cache 不变量 5 条全过；render 页 16 条断言无 error，compact 菱形 aspect 2 / 长标签 4 /
+原生正方形 1、katex 数学元素存在，均与改前一致）；`npm run build` 产物 5,367,349 B，
+与改前 5,367,227 B 只差源文件重排。
+
+**等价性验证**（临时做了一次，未入库）：用 `git worktree` 在 HEAD（改前）上建一份基线，两侧各
+构建一个只调用 `renderDiagram()` 的浏览器页，对 7 类图 × plain 开/关共 14 个用例比对
+`width` / `height` / 归一化后 SVG 的 sha256（归一化只抹掉 mermaid 每次渲染都不同的 `cm-<seq>-<时间戳>`
+及其 id/marker 引用）。结果：**12/14 逐字节相同**；不一致的 2 个都是 `classDiagram`，而基线
+**自己连跑两次也不相同**（`ca09dcf…` → `826c757…`）—— 那是 mermaid 自身的非确定性，
+与本次改动无关。这条也说明 `classDiagram` 进不了基于 SVG 哈希的缓存断言。
 
 ### 阶段 1 —— 接入 Pele 但保持旧路径可回退（仅本地验证，不发布）
 
 **目标**：在真实 vault 上跑通观感与语法覆盖，收集差异清单。
 
-- 新增 `src/renderer-pele.ts`，`render()` → `normalizeSvg()` → 缓存。
+- 新增 `src/renderer-pele.ts`（实现 `RenderEngine`），`render()` → `normalizeSvg()` → 缓存，
+  然后在 `src/renderer.ts` 里把 `engine` 换成它。
 - 关键实现细节（都是实测确认过的）：
   - **`responsive: false`、不传 `maxWidth`**。本插件自己算 `computeFit` 缩放；Pele 的响应式会
     按容器宽度重排布局（<640px 自动把 `LR` 转竖向），两套适配叠加会互相打架。
@@ -349,7 +371,7 @@ mermaid 专属键在 Pele 下**无落点**，只能合并进 surface 系列。
 | 数学公式回归 | 用 `$$` 的用户看到 TeX 源码 | 阶段 4 接 katex，或至少在 CHANGELOG 声明 |
 | 回退成本 | 已发布的破坏性变更难收回 | 阶段 1 全程保留旧实现可切换，直到阶段 5 才删 |
 
-回退策略：阶段 0–4 期间 `src/renderer.ts` 保持双实现（`renderer-mermaid.ts` / `renderer-pele.ts`），
+回退策略：阶段 1–4 期间 `src/renderer.ts` 里同时保留 `mermaidEngine` 与 `peleEngine` 两个实现，
 用一个内部开关切换；只有阶段 5 发版时才删除旧实现。这样任何阶段发现问题都能一行切回。
 
 ---

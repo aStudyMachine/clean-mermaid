@@ -47,6 +47,6 @@
 3. [ ] 可选：mermaid 上游自抬 katex 到 `>=0.18.2` 后，摘掉 `package.json` 的 `overrides`
 4. [ ] 可选：issue 模板配 `config.yml`、设置面板增加更多语言（界面文案已全部走 `plugin.t`）
 5. [ ] **Pele 迁移**：调研已完成，方案与实测数据在 [docs/pele-migration.md](docs/pele-migration.md)。
-   待办分解：① 阶段 0（抽 `src/renderer.ts` 薄接口，不改行为，随时可做）；
+   待办分解：① ~~阶段 0（抽薄接口，不改行为）~~ **已完成**；
    ② 等 Obsidian 1.15 正式版 asar 发布后，用 `scripts/scan-asar.mjs` 重核接管选择器 / 信任门 /
    `docViewUpdate`（文档第 10 节）；③ 第 8 节 6 个决策点需维护者拍板后才进阶段 1。

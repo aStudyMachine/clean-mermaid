@@ -1,5 +1,5 @@
 import { BUILTIN_THEMES } from "../../src/themes";
-import { renderDiagram } from "../../src/mermaid-runtime";
+import { renderDiagram } from "../../src/renderer";
 
 const FLOW = `flowchart TD
   A[开始] --> B{判断条件}

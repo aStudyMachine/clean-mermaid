@@ -1,7 +1,8 @@
 import { App, Modal, setIcon } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import { clamp, computeViewerWindowSize, MAX_SCALE, MIN_SCALE } from "./fit";
-import { svgToDataUrl, type RenderedDiagram } from "./mermaid-runtime";
+import type { RenderedDiagram } from "./render-engine";
+import { svgToDataUrl } from "./svg-utils";
 import { exportDiagramPng, exportDiagramSvg, type ExportBundle } from "./export";
 
 /** 窗口允许的最小尺寸（px）；再小工具栏就不可用了。 */

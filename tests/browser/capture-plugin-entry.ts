@@ -1,5 +1,5 @@
 import { BUILTIN_THEMES, themeCanvasColor } from "../../src/themes";
-import { renderDiagram } from "../../src/mermaid-runtime";
+import { renderDiagram } from "../../src/renderer";
 import { CAPTURE_DIAGRAMS, CAPTURE_LANGUAGES } from "./capture-diagrams";
 import { postJson, rasteriseToPng, showError, sizeSvg } from "./capture-shared";
 

@@ -57,7 +57,10 @@ into a committed file.
 | `src/decision-shape.ts` | Decision node diamond geometry (pure math, unit-tested) — the compact diamond that replaces mermaid's square one |
 | `src/mermaid-shapes.d.ts` | Ambient types for the hashed mermaid chunk the shape table is imported from; a mermaid upgrade breaks this import on purpose |
 | `src/livepreview.ts` | Live preview takeover (Obsidian hard-codes mermaid rendering there, so the rendered widget is replaced) |
-| `src/mermaid-runtime.ts` | Bundled mermaid runtime: init config, `%%{init}%%` injection, decision-node shape patch, SVG normalisation, LRU cache |
+| `src/mermaid-runtime.ts` | Bundled mermaid runtime: init config, `%%{init}%%` injection, decision-node shape patch, LRU cache. The **only** file that imports `mermaid` |
+| `src/render-engine.ts` | Render-engine contract (types + `RenderEngine` interface). No runtime imports, so pure modules and unit tests can depend on it |
+| `src/renderer.ts` | Composition root: picks the engine the rest of the plugin talks to. Swapping the renderer changes this file plus one implementation |
+| `src/svg-utils.ts` | Engine-agnostic SVG handling: `data:` URL conversion, pixel-size normalisation, `max-width` removal |
 | `src/themes.ts` | Built-in themes, custom theme parsing/validation, theme resolution for light/dark |
 | `src/fit.ts` | Pure auto-fit math (easy to unit test — no Obsidian dependency) |
 | `src/viewer.ts` | Fullscreen modal viewer (viewport-sized, drag-resizable, adaptive fit; zoom, pan, pinch, export) |

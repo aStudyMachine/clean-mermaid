@@ -1,6 +1,7 @@
 import { Notice } from "obsidian";
 import { pick, type Language } from "./i18n";
-import { svgToDataUrl, type RenderedDiagram } from "./mermaid-runtime";
+import type { RenderedDiagram } from "./render-engine";
+import { svgToDataUrl } from "./svg-utils";
 
 /** 导出画布允许的最大像素面积（内存兜底）。 */
 const MAX_CANVAS_PIXELS = 40_000_000;

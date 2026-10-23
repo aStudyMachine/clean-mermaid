@@ -1,7 +1,8 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, setIcon } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import { clamp, computeFit, MAX_SCALE, MIN_SCALE } from "./fit";
-import { peekRendered, renderDiagram, svgToDataUrl, type RenderRequest, type RenderedDiagram } from "./mermaid-runtime";
+import { peekRendered, renderDiagram, type RenderRequest, type RenderedDiagram } from "./renderer";
+import { svgToDataUrl } from "./svg-utils";
 import { resolveActiveTheme, themeCanvasColor, themeIdentity, type ThemeDefinition } from "./themes";
 import {
 	copyDiagramPng,

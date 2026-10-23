@@ -209,6 +209,27 @@ SVG 字节数每轮都不同，应来自 SVG 里自动生成的 id）。而该�
 逐项核对（agent 可用浏览器自动化读取，不必人工）；新增渲染路径的用例同时往 `#out` 追加可视化
 图例留作截图比对——katex 数学用例即此做法，换 katex 版本前后靠它目检。
 
+### 纯重构的等价性靠 worktree 双构建 + 归一化哈希，不靠肉眼
+
+**教训**：把渲染层抽成接口这种「应该一行行为不变」的改动，`npm test` 只能证明纯模块没坏，
+`test:browser` 只能证明渲染没抛错 —— 两者都不能证明产出一样。而 mermaid 的 SVG 里带
+`cm-<seq>-<时间戳>` 的 render id（以及引用它的 marker / aria），直接比字符串永远是「不同」。
+
+**对策**：`git worktree add <临时目录> HEAD` 建一份改前基线（`node_modules` 用符号链接借过去），
+两侧各构建一个只调 `renderDiagram()` 的浏览器页，跑同一组用例，比对 `width`/`height` 与
+**归一化后**的 sha256（归一化只抹 id、`url(#…)`、`href="#…"`、`aria-*by`）。
+2026-10 阶段 0 用这套得到 12/14 逐字节相同；不一致的 2 个是 `classDiagram`，而**基线自己
+连跑两次也不相同** —— 那是 mermaid 自身的非确定性。附带结论：`classDiagram` 不能进基于
+SVG 哈希的断言。验证页是临时产物，比对完即删，不入库。
+
+### 同一文件混行尾（CRLF/LF）会让 diff 假性变大
+
+**教训**：`src/mermaid-runtime.ts` 在工作区是 CRLF（历史遗留），用脚本整段替换后写成 LF，
+`git diff` 就把整文件当改写，看不清真实改动量。仓库 `core.autocrlf=input`，提交后会被转回 LF，
+但工作区那份仍然脏。
+
+**对策**：用 `grep -qU $'\r' <file>` 逐文件确认行尾再读 diff；发现混行尾先统一成 LF 再比对。
+
 ### 样式竞争规则从 asar 取证，不靠 devtools 盲猜
 
 **教训**：摘 `!important` 前需要知道是谁压住了谁；devtools 人工翻查慢且结论不可复核。

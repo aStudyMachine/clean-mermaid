@@ -85,6 +85,10 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   设置项「判断节点形状」可整体退回原生正方形，`%% cm:plain %%` 恒用原生。别把它扩大成第二类改写。
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
 - 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `decision-shape.ts` / `fit.ts` / `themes.ts` / `i18n.ts`。
+- **渲染器只在 `mermaid-runtime.ts` 里 import**。上层（`block.ts` / `export.ts` / `viewer.ts` / `tests/browser/*`）一律走
+  `renderer.ts`（引擎选择）与 `render-engine.ts`（类型契约）；SVG 字符串的通用处理放 `svg-utils.ts`。
+  这是换渲染器（见 [docs/pele-migration.md](docs/pele-migration.md)）能只改一个实现文件的前提，
+  不要为了少写一个文件又把 `import mermaid` 或 `normalizeSvg` 搬回上层。
 - **mermaid 版本已固定，升级版本需先在本地验证渲染行为再提交（四套主题着色、ELK/Dagre 差异、指令合并优先级）**；
   升级还会在构建期直接报 `Could not resolve "mermaid/dist/chunks/mermaid.core/chunk-<hash>.mjs"` ——
   那是判断节点形状补丁依赖的内部 chunk 文件名，**解析失败要当真**，重新核对 `docs/obsidian-internals.md`

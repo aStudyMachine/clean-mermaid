@@ -51,7 +51,10 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 | `src/decision-shape.ts` | 判断节点菱形的几何（纯计算，有单测）—— 取代 mermaid 正方形菱形的紧凑画法 |
 | `src/mermaid-shapes.d.ts` | 形状表所在 mermaid 哈希 chunk 的类型声明；升级 mermaid 时刻意让它解析失败 |
 | `src/livepreview.ts` | 实时预览接管（Obsidian 在该视图硬编码渲染 mermaid，因此替换其已渲染部件） |
-| `src/mermaid-runtime.ts` | 自带 mermaid 运行时：初始化配置、`%%{init}%%` 指令注入、判断节点形状改写、SVG 归一化、LRU 缓存 |
+| `src/mermaid-runtime.ts` | 自带 mermaid 运行时：初始化配置、`%%{init}%%` 指令注入、判断节点形状改写、LRU 缓存。**唯一**直接 import `mermaid` 的文件 |
+| `src/render-engine.ts` | 渲染引擎契约（类型 + `RenderEngine` 接口）。无运行时依赖，纯逻辑模块与单测都可引用 |
+| `src/renderer.ts` | 组合根：决定上层拿到的引擎。换渲染器只需改这里 + 一个实现文件 |
+| `src/svg-utils.ts` | 与引擎无关的 SVG 处理：`data:` URL 转换、像素尺寸归一化、剥 `max-width` |
 | `src/themes.ts` | 内置主题、自定义主题解析与校验、明暗主题选择 |
 | `src/fit.ts` | 纯函数自适应计算（不依赖 Obsidian，便于单测） |
 | `src/viewer.ts` | 全屏查看器（铺满视口、可拖拽调整大小、自适应；缩放、平移、捏合、导出） |

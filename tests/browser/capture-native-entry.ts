@@ -7,7 +7,7 @@ import { NATIVE_CONFIG, NATIVE_FONT_STACK } from "./native-config";
  * `scripts/extract-obsidian-mermaid.mjs` 从 app.asar 取出）+ 它自己的 `mermaid.initialize` 参数渲染。
  *
  * 两个刻意之处：
- * - **不 import** 插件自带的 `mermaid`，也不用 `src/mermaid-runtime.ts`：那样两侧就是同一个版本、
+ * - **不 import** 插件自带的 `mermaid`，也不用 `src/renderer.ts`：那样两侧就是同一个版本、
  *   同一套默认布局（12 起 flowchart 默认已是 ELK），对比图会假性地一模一样。
  * - 该构建以 UMD 方式挂到 `globalThis.mermaid`，所以这里只按用到的方法做最小结构声明。
  *

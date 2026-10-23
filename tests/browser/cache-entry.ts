@@ -1,4 +1,4 @@
-import { renderDiagram } from "../../src/mermaid-runtime";
+import { renderDiagram } from "../../src/renderer";
 import { themeIdentity } from "../../src/themes";
 
 const FLOW = `flowchart TD

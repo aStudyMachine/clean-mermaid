@@ -8,33 +8,17 @@ import {
 	type ChunkShapeRenderOptions,
 } from "mermaid/dist/chunks/mermaid.core/chunk-XC4XBNZT.mjs";
 import { decisionBox, decisionPoints } from "./decision-shape";
-import { SYSTEM_FONT_STACK, themeIdentity, type ThemeDefinition } from "./themes";
-import type {
-	DecisionShape,
-	ElkMergeEdges,
-	ElkNodePlacement,
-	LayoutEngine,
-} from "./settings";
+import type { RenderEngine, RenderRequest, RenderedDiagram } from "./render-engine";
+import { normalizeSvg } from "./svg-utils";
+import { SYSTEM_FONT_STACK, themeIdentity } from "./themes";
+import type { DecisionShape } from "./settings";
 
-export interface RenderRequest {
-	/** mermaid 源码（已剥掉 `%% cm: %%` 指令）。 */
-	code: string;
-	/** 要注入的主题；`null` 走 mermaid 自带默认外观（plain 模式）。 */
-	theme: ThemeDefinition | null;
-	layout: LayoutEngine;
-	elkMergeEdges: ElkMergeEdges;
-	elkNodePlacement: ElkNodePlacement;
-	/** 判断节点菱形的画法，来自设置项。 */
-	decisionShape: DecisionShape;
-	/** plain 模式用 mermaid 自带的 theme/dagre，不加插件样式。 */
-	plain: boolean;
-}
-
-export interface RenderedDiagram {
-	svg: string;
-	width: number;
-	height: number;
-}
+/**
+ * mermaid 实现。**这是唯一直接 import `mermaid` 的文件**，上层（卡片 / 导出 / 查看器）
+ * 只依赖 `./render-engine` 的契约，不依赖这里。
+ *
+ * 换渲染器的方案与实测依据见 docs/pele-migration.md；本文件就是那一次替换要动的单点。
+ */
 
 let initialized = false;
 let renderSeq = 0;
@@ -243,42 +227,7 @@ function injectInitDirective(source: string, init: Record<string, unknown>): str
 	return `${directive}\n${source}`;
 }
 
-/** 给 SVG 根节点强制写上像素尺寸，放进 <img> 里表现才可预期。 */
-function normalizeSvg(svg: string): RenderedDiagram {
-	const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
-	const el = doc.documentElement;
-	if (!el || el.nodeName.toLowerCase() !== "svg") {
-		return { svg, width: 0, height: 0 };
-	}
-
-	let width = 0;
-	let height = 0;
-	const viewBox = el.getAttribute("viewBox");
-	if (viewBox) {
-		const parts = viewBox.trim().split(/[\s,]+/).map(Number);
-		if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
-			width = parts[2];
-			height = parts[3];
-		}
-	}
-	if (!width || !height) {
-		width = Number.parseFloat(el.getAttribute("width") ?? "") || 800;
-		height = Number.parseFloat(el.getAttribute("height") ?? "") || 600;
-	}
-
-	el.setAttribute("width", String(width));
-	el.setAttribute("height", String(height));
-	el.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-	if (!el.getAttribute("xmlns:xlink")) {
-		el.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
-	}
-	const style = el.getAttribute("style");
-	if (style && /max-width/i.test(style)) {
-		el.setAttribute("style", style.replace(/max-width\s*:[^;]*;?/gi, "").trim());
-	}
-
-	return { svg: new XMLSerializer().serializeToString(el), width, height };
-}
+/** 给 SVG 根节点强制写上像素尺寸、剥掉 `max-width`、补齐 xmlns（实现在 `svg-utils`）。 */
 
 const cache = new Map<string, RenderedDiagram>();
 const CACHE_LIMIT = 100;
@@ -294,10 +243,6 @@ function cacheKey(request: RenderRequest): string {
 		request.decisionShape,
 		request.code,
 	].join("\u0000");
-}
-
-export function svgToDataUrl(svg: string): string {
-	return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 /**
@@ -354,3 +299,9 @@ export async function renderDiagram(request: RenderRequest): Promise<RenderedDia
 	}
 	return normalized;
 }
+
+/** `./render-engine` 契约的 mermaid 实现。上层通过 `./renderer` 拿到它。 */
+export const mermaidEngine: RenderEngine = {
+	peek: peekRendered,
+	render: renderDiagram,
+};
