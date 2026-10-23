@@ -8,6 +8,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 [CONTRIBUTING.md](CONTRIBUTING.md) 环境、目录结构、实现约定、手动验收清单 ·
 [docs/obsidian-internals.md](docs/obsidian-internals.md) 动渲染 / 主题 / 接管前必读的逆向结论 ·
 [docs/agent-lessons.md](docs/agent-lessons.md) 跨会话踩坑经验与对策（agent 共识，补录规则见文内） ·
+[docs/pele-migration.md](docs/pele-migration.md) 用 Pele 替换内置 mermaid 的调研与迁移规划（**未动工**，动渲染层前先读） ·
 [CHANGELOG.md](CHANGELOG.md) 版本变更记录（发版时补条目） ·
 [TODO.md](TODO.md) 当前待办（完成即删）
 
@@ -35,6 +36,9 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   门控与四条逆向结论见 [docs/obsidian-internals.md](docs/obsidian-internals.md)。
 - **只声明桌面**：`manifest.json` 的 `isDesktopOnly` 为 `true`，导出（`src/export.ts`）一律走浏览器下载，
   不要再加移动端分支或移动端文案 —— 真机从未实测。
+- **Obsidian 1.15 已把官方 mermaid 换成 Pele**（2026-10-22 catalyst changelog；本机 `obsidian-1.14.5.asar`
+  已分发 `lib/pele.min.js` 但未启用）。这意味着「自带 mermaid 12 + ELK」的相对优势有保质期；换不换、
+  什么时候换的实测数据与分阶段方案在 [docs/pele-migration.md](docs/pele-migration.md)，动渲染层前先读它。
 - **兼容口径按实测写**：`minAppVersion` 取唯一实测过的 Obsidian 版本（现 1.14.4），因为接管依赖未公开的
   选择器与钩子；要下调它先用 `scripts/scan-asar.mjs --allow-stale` 复核目标版本，再看 `docs/obsidian-internals.md`。
 - **本机运行版本 ≠ 安装目录版本**：Windows 自动更新把新包下到 `%APPDATA%\obsidian\obsidian-<版本>.asar`
