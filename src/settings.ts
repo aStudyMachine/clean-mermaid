@@ -21,6 +21,8 @@ export type ElkNodePlacement =
 export type PngScale = 1 | 2 | 3;
 export type PngBackground = "theme" | "transparent";
 export type ToolbarMode = "hover" | "always";
+/** 双击图表做什么：展开查看（默认）、复位缩放，或不做任何响应。 */
+export type DoubleClickAction = "viewer" | "reset" | "off";
 /** 判断节点（`{}`）菱形的画法：贴着文字量的扁菱形，或 mermaid 内置的正方形。 */
 export type DecisionShape = "compact" | "native";
 
@@ -56,7 +58,7 @@ export interface CleanMermaidSettings {
 	wheelZoom: boolean;
 	dragPan: boolean;
 	toolbarMode: ToolbarMode;
-	doubleClickReset: boolean;
+	doubleClickAction: DoubleClickAction;
 
 	enableRendering: boolean;
 	imageify: boolean;
@@ -88,7 +90,7 @@ export const DEFAULT_SETTINGS: CleanMermaidSettings = {
 	wheelZoom: true,
 	dragPan: true,
 	toolbarMode: "hover",
-	doubleClickReset: true,
+	doubleClickAction: "viewer",
 
 	enableRendering: true,
 	imageify: true,
@@ -107,8 +109,11 @@ const LEGACY_THEME_IDS: Record<string, string> = {
 	"codex-dark": "clean-dark",
 };
 
+/** 0.1.8 及更早版本写入的旧字段，只在迁移时出现。 */
+type LegacySettings = CleanMermaidSettings & { doubleClickReset?: boolean };
+
 /**
- * 把早期版本写入的配置映射到当前的主题 id，改名之后已保存的设置仍可继续使用。
+ * 把早期版本写入的配置映射到当前的结构，改名、换开关之后已保存的设置仍可继续使用。
  * 有内容被改写时返回 true。
  */
 export function migrateSettings(settings: CleanMermaidSettings): boolean {
@@ -120,6 +125,17 @@ export function migrateSettings(settings: CleanMermaidSettings): boolean {
 			settings[key] = mapped;
 			changed = true;
 		}
+	}
+
+	// 旧的布尔开关只表达「双击要不要复位缩放」。关掉它的用户是不想让双击有任何动作，
+	// 保留这个意图；开着的人拿新默认值（双击展开），这正是这次改动要送出去的能力。
+	const legacy = settings as LegacySettings;
+	if (typeof legacy.doubleClickReset === "boolean") {
+		if (!legacy.doubleClickReset) {
+			settings.doubleClickAction = "off";
+		}
+		delete legacy.doubleClickReset;
+		changed = true;
 	}
 	return changed;
 }
@@ -326,12 +342,20 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 						},
 					},
 					{
-						name: t("Double-click to reset zoom", "双击复位缩放"),
+						name: t("Double-click action", "双击操作"),
 						desc: t(
-							"Double-clicking a diagram returns it to auto-fit.",
-							"双击图表可恢复到自适应状态。",
+							"Double-clicking a diagram opens it expanded. You can give the gesture back to resetting the zoom, or turn it off.",
+							"双击图表的默认行为是展开查看；也可以改为复位缩放，或什么都不做。",
 						),
-						control: { type: "toggle", key: "doubleClickReset" },
+						control: {
+							type: "dropdown",
+							key: "doubleClickAction",
+							options: {
+								viewer: t("Open expanded (default)", "展开查看（默认）"),
+								reset: t("Reset zoom", "复位缩放"),
+								off: t("Do nothing", "不响应"),
+							},
+						},
 					},
 				],
 			},

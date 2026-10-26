@@ -1,5 +1,6 @@
 import { getLanguage, MarkdownPostProcessorContext, Notice, Plugin } from "obsidian";
 import { CleanMermaidBlock } from "./block";
+import { markViewerHintAnnounced, viewerHintAnnounced, viewerOpened } from "./hints";
 import { pick, resolveLanguage, type Language } from "./i18n";
 import { createLivePreviewExtension } from "./livepreview";
 import { CleanMermaidSettingTab, DEFAULT_SETTINGS, migrateSettings, type CleanMermaidSettings } from "./settings";
@@ -12,6 +13,8 @@ export default class CleanMermaidPlugin extends Plugin {
 	settings: CleanMermaidSettings = structuredClone(DEFAULT_SETTINGS);
 	warnedAboutRenderFailure = false;
 	warnedAboutRenderingConflict = false;
+	/** 本次会话已经做过「双击展开」的一次性提示，避免同屏多张卡片各弹一次。 */
+	private viewerHintShown = false;
 
 	private readonly blocks = new Set<CleanMermaidBlock>();
 	private commandsRegistered = false;
@@ -131,6 +134,34 @@ export default class CleanMermaidPlugin extends Plugin {
 			void block.refresh(true);
 		}
 		new Notice(this.t("Clean Mermaid: diagrams redrawn", "Clean Mermaid：图表已重绘"));
+	}
+
+	/**
+	 * 一次性告知「双击可展开查看」。只提示一次：每个会话最多一条，跨会话靠 hints 里的标记，
+	 * 而且用户已经展开过图表就不再打扰。
+	 */
+	announceViewerHint(): void {
+		if (this.viewerHintShown || this.settings.doubleClickAction === "off") {
+			return;
+		}
+		this.viewerHintShown = true;
+		if (viewerHintAnnounced() || viewerOpened()) {
+			return;
+		}
+		markViewerHintAnnounced();
+		new Notice(
+			this.t(
+				"Clean Mermaid: double-click a diagram to open it expanded.",
+				"Clean Mermaid：双击图表即可展开查看。",
+			),
+		);
+	}
+
+	/** 展开过图表之后，把各张卡片上的「双击展开」标签一起撤掉。 */
+	dismissViewerHints(): void {
+		for (const block of this.blocks) {
+			block.dismissViewerHint();
+		}
 	}
 
 	warnAboutConflict(): void {

@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, setIcon } from "obsidian";
+import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, setIcon, setTooltip } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import { clamp, computeFit, MAX_SCALE, MIN_SCALE } from "./fit";
 import { peekRendered, renderDiagram, type RenderRequest, type RenderedDiagram } from "./renderer";
@@ -14,6 +14,7 @@ import {
 import { parseBlockDirectives } from "./directives";
 import type { LayoutEngine } from "./settings";
 import { DiagramViewerModal } from "./viewer";
+import { markViewerOpened, viewerOpened } from "./hints";
 
 /**
  * 一个已渲染的 ```mermaid 块：负责渲染图表、套上卡片，并持有全部交互
@@ -187,6 +188,8 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		this.bindInteractions(canvas);
 		this.observeResize(card);
 		this.removeStrayRenderers();
+		// 首次渲染出一张卡片时做一次性告知；之后的发现靠工具条上的「双击展开」标签。
+		this.plugin.announceViewerHint();
 		// SVG 自带原始尺寸，所以适配必须在这一步同步做完 —— 先让 CodeMirror 量到原始大小、
 		// 下一帧才改成适配后的大小，笔记就会跳两次。
 		if (!this.applyFit()) {
@@ -198,18 +201,26 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		const plugin = this.plugin;
 		const toolbar = stage.createDiv({ cls: "cm-toolbar" });
 
+		// 「双击展开」的教学标签：只在还没展开过任何图表、且双击确实绑在展开上时渲染。
+		// 两个条件缺一不可 —— 双击被改成复位或不响应之后，这句话就成了假的。
+		// 文案写全整句而不是「双击展开」四个字：这一行就是这两处入口唯一的解释，别让用户自己补主语。
+		if (!viewerOpened() && plugin.settings.doubleClickAction === "viewer") {
+			toolbar.createDiv({
+				cls: "cm-toolbar-hint",
+				text: plugin.t("Double-click the diagram to expand", "双击图表也能展开"),
+			});
+		}
+
 		const moreLabel = plugin.t("More actions", "更多操作");
-		const menuButton = toolbar.createEl("button", {
-			cls: "cm-btn",
-			attr: { "aria-label": moreLabel, title: moreLabel },
-		});
+		const menuButton = toolbar.createEl("button", { cls: "cm-btn" });
+		setTooltip(menuButton, moreLabel);
 		setIcon(menuButton, "more-horizontal");
 
-		const fullscreenLabel = plugin.t("Open in fullscreen", "全屏打开");
-		const expandButton = toolbar.createEl("button", {
-			cls: "cm-btn",
-			attr: { "aria-label": fullscreenLabel, title: fullscreenLabel },
-		});
+		// 悬浮提示只写动作名。**不要**再写 title —— Obsidian 的提示按 aria-label 渲染，
+		// 两个属性同时写着会弹出两个叠在一起的气泡。双击提示归左边的教学标签，不在这里重复。
+		const expandLabel = plugin.t("Expand diagram", "展开图表");
+		const expandButton = toolbar.createEl("button", { cls: "cm-btn" });
+		setTooltip(expandButton, expandLabel);
 		setIcon(expandButton, "maximize-2");
 
 		const menu = stage.createDiv({ cls: "cm-menu cm-hidden" });
@@ -240,10 +251,8 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		});
 		this.registerDomEvent(document, "click", () => this.hideMenu());
 
-		const badge = stage.createDiv({
-			cls: "cm-zoom-badge cm-hidden",
-			attr: { title: plugin.t("Reset zoom", "复位缩放") },
-		});
+		const badge = stage.createDiv({ cls: "cm-zoom-badge cm-hidden" });
+		setTooltip(badge, plugin.t("Reset zoom", "复位缩放"));
 		this.registerDomEvent(badge, "click", (event) => {
 			event.stopPropagation();
 			this.resetZoom();
@@ -329,10 +338,18 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		this.registerDomEvent(canvas, "pointerup", endDrag);
 		this.registerDomEvent(canvas, "pointercancel", endDrag);
 
-		this.registerDomEvent(canvas, "dblclick", () => {
-			if (this.plugin.settings.doubleClickReset) {
-				this.resetZoom();
+		this.registerDomEvent(canvas, "dblclick", (event: MouseEvent) => {
+			const action = this.plugin.settings.doubleClickAction;
+			if (action === "off") {
+				return;
 			}
+			// 拦住冒泡：实时预览里卡片是嵌在 CodeMirror 中的部件，别让双击顺带在源码里选词。
+			event.stopPropagation();
+			if (action === "reset") {
+				this.resetZoom();
+				return;
+			}
+			this.openViewer();
 		});
 	}
 
@@ -489,11 +506,19 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		if (!this.rendered) {
 			return;
 		}
+		// 展开过一次就算学会了：把各张卡片上的「双击展开」标签一起撤掉，之后只剩工具条按钮。
+		markViewerOpened();
+		this.plugin.dismissViewerHints();
 		new DiagramViewerModal(this.plugin.app, this.plugin, {
 			rendered: this.rendered,
 			background: this.plugin.settings.pngBackground === "theme" ? themeCanvasColor(this.theme) : null,
 			source: this.source,
 		}).open();
+	}
+
+	/** 撤掉本卡片上的「双击展开」教学标签。 */
+	dismissViewerHint(): void {
+		this.cardEl?.querySelector(".cm-toolbar-hint")?.remove();
 	}
 
 	private bundle(): ExportBundle | null {

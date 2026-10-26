@@ -69,6 +69,7 @@ body.theme-dark .cm-card {
 	z-index: 2;
 	display: flex;
 	gap: 2px;
+	max-width: calc(100% - 12px);
 	opacity: 0;
 	transition: opacity 120ms ease;
 }
@@ -76,6 +77,25 @@ body.theme-dark .cm-card {
 .cm-card:hover .cm-toolbar,
 .cm-card.cm-toolbar-always .cm-toolbar {
 	opacity: 1;
+}
+
+/* 「双击展开」教学标签：跟着工具条一起淡入，展开过一次图表之后就不再渲染。
+   它是标签不是按钮（真正可点的是它右手边的展开按钮），所以不接指针事件；
+   命中它的事件照常落到卡片上，双击因此仍然有效。整句文案比四个字宽，窄分栏下允许截断，
+   别让它把工具条顶出卡片。 */
+.cm-toolbar-hint {
+	flex: 0 1 auto;
+	min-width: 0;
+	height: 26px;
+	line-height: 26px;
+	padding: 0 4px 0 2px;
+	overflow: hidden;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	pointer-events: none;
+	user-select: none;
 }
 
 .cm-btn {

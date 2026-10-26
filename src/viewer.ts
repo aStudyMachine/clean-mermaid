@@ -1,4 +1,4 @@
-import { App, Modal, setIcon } from "obsidian";
+import { App, Modal, setIcon, setTooltip } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import { clamp, computeViewerWindowSize, MAX_SCALE, MIN_SCALE } from "./fit";
 import type { RenderedDiagram } from "./render-engine";
@@ -8,6 +8,8 @@ import { exportDiagramPng, exportDiagramSvg, type ExportBundle } from "./export"
 /** 窗口允许的最小尺寸（px）；再小工具栏就不可用了。 */
 const VIEWER_MIN_WIDTH = 480;
 const VIEWER_MIN_HEIGHT = 360;
+/** 判为「拖拽过」的位移阈值（px）：小于它仍算一次点击，双击照常关窗。 */
+const DRAG_CLICK_TOLERANCE = 4;
 /** 打开时的默认窗口＝视口的上限；与 styles.css 里 .cm-modal 的 max-width / max-height 同一口径。 */
 const VIEWER_MAX_WIDTH_RATIO = 0.92;
 const VIEWER_MAX_HEIGHT_RATIO = 0.88;
@@ -53,11 +55,14 @@ export class DiagramViewerModal extends Modal {
 	private zoom = 1;
 	private tx = 0;
 	private ty = 0;
+	/** 本次按下在画布上走过的最大位移，用来把「拖完松手」跟真正的双击区分开。 */
+	private dragDistance = 0;
 	private resizeState: ResizeState | null = null;
 	/**
 	 * 自适应开关，就是工具条上那颗按钮的两个状态：开启时图始终装进窗口，窗口尺寸一变就重算；
 	 * 用户一旦手动缩放或平移就自动关闭，之后窗口变化不再覆盖他的缩放。
-	 * 重新开启的入口是点按钮、双击图、按 `0` —— 三者都走 `fit()`。
+	 * 重新开启的入口是点按钮、按 `0` —— 两者都走 `fit()`。双击在查看器里是关窗（见 ADR 0003），
+	 * 别再把它接回 `fit()`。
 	 */
 	private autoFit = true;
 	/** 自适应开关按钮，用来把两态如实画出来。 */
@@ -128,10 +133,10 @@ export class DiagramViewerModal extends Modal {
 		const toolbar = this.contentEl.createDiv({ cls: "cm-modal-toolbar" });
 
 		const addButton = (icon: string, label: string, action: () => void): HTMLButtonElement => {
-			const button = toolbar.createEl("button", {
-				cls: "cm-btn",
-				attr: { "aria-label": label, title: label },
-			});
+			const button = toolbar.createEl("button", { cls: "cm-btn" });
+			// 只走 setTooltip（它写 aria-label，Obsidian 用这份渲染自己的悬浮提示）。
+			// 千万别再加 title：两套提示会叠在一起弹两个气泡。
+			setTooltip(button, label);
 			setIcon(button, icon);
 			button.addEventListener("click", action);
 			return button;
@@ -187,6 +192,7 @@ export class DiagramViewerModal extends Modal {
 				this.dragging = true;
 				this.dragStart = { x: event.clientX, y: event.clientY };
 				this.dragOrigin = { x: this.tx, y: this.ty };
+				this.dragDistance = 0;
 				stage.addClass("cm-grabbing");
 			} else if (this.pointers.size === 2) {
 				this.dragging = false;
@@ -212,6 +218,11 @@ export class DiagramViewerModal extends Modal {
 			if (this.dragging) {
 				this.tx = this.dragOrigin.x + (event.clientX - this.dragStart.x);
 				this.ty = this.dragOrigin.y + (event.clientY - this.dragStart.y);
+				// 记下本次按下走了多远：拖完松手不该被当成双击关窗。
+				this.dragDistance = Math.max(
+					this.dragDistance,
+					Math.hypot(event.clientX - this.dragStart.x, event.clientY - this.dragStart.y),
+				);
 				this.clampPan();
 				// 贴着边拖不动（图没溢出）时不算手动，别把自适应开关关掉。
 				if (this.tx !== this.dragOrigin.x || this.ty !== this.dragOrigin.y) {
@@ -239,7 +250,14 @@ export class DiagramViewerModal extends Modal {
 		stage.addEventListener("pointerup", endPointer);
 		stage.addEventListener("pointercancel", endPointer);
 
-		stage.addEventListener("dblclick", () => this.fit());
+		stage.addEventListener("dblclick", (event: MouseEvent) => {
+			event.stopPropagation();
+			// 拖拽松手容易连着点出第二次按下，位移超过阈值就不当双击（见 ADR 0003）。
+			if (this.dragDistance > DRAG_CLICK_TOLERANCE) {
+				return;
+			}
+			this.close();
+		});
 	}
 
 	/** 视口允许的窗口上限；用最小值兜底，避免极小视口时上限比下限还小。 */
@@ -449,7 +467,7 @@ export class DiagramViewerModal extends Modal {
 		this.applyTransform();
 	}
 
-	/** 自适应开关的两态文案；按钮只有图标，文案走 title 与 aria-label。 */
+	/** 自适应开关的两态文案；按钮只有图标，文案走 aria-label（Obsidian 按它渲染悬浮提示）。 */
 	private autoFitLabel(): string {
 		return this.autoFit
 			? this.plugin.t("Adaptive fit: on (click to turn off)", "自适应：已开启（点击关闭）")
@@ -461,8 +479,8 @@ export class DiagramViewerModal extends Modal {
 		const label = this.autoFitLabel();
 		this.fitButtonEl.toggleClass("cm-btn-active", this.autoFit);
 		this.fitButtonEl.setAttribute("aria-pressed", String(this.autoFit));
+		// 只改 aria-label：Obsidian 的悬浮提示就按它渲染，别再同步写一个 title。
 		this.fitButtonEl.setAttribute("aria-label", label);
-		this.fitButtonEl.setAttribute("title", label);
 	}
 
 	/** 工具条按钮：关掉自适应保留当前缩放，或开启它并立刻装进窗口。 */

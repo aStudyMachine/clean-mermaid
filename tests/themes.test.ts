@@ -29,7 +29,7 @@ const base: CleanMermaidSettings = {
 	wheelZoom: true,
 	dragPan: true,
 	toolbarMode: "hover",
-	doubleClickReset: true,
+	doubleClickAction: "viewer",
 	enableRendering: true,
 	imageify: true,
 	enableDirectives: true,
