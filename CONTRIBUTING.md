@@ -63,7 +63,8 @@ into a committed file.
 | `src/svg-utils.ts` | Engine-agnostic SVG handling: `data:` URL conversion, pixel-size normalisation, `max-width` removal |
 | `src/themes.ts` | Built-in themes, custom theme parsing/validation, theme resolution for light/dark |
 | `src/fit.ts` | Pure auto-fit math (easy to unit test — no Obsidian dependency) |
-| `src/viewer.ts` | Fullscreen modal viewer (viewport-sized, drag-resizable, adaptive fit; zoom, pan, pinch, export) |
+| `src/viewer.ts` | Expanded modal viewer (viewport-sized, drag-resizable, adaptive fit; zoom, pan, pinch, export) |
+| `src/hints.ts` | One-off "double-click to expand" teaching flags in `localStorage` — deliberately not settings |
 | `src/export.ts` | PNG rasterisation, SVG output, clipboard |
 | `src/i18n.ts` | Language detection (`auto` follows Obsidian) and the bilingual picker behind every label the plugin draws |
 | `src/settings.ts` | Settings model + settings tab (custom theme JSON editor, UI language option) |
@@ -123,15 +124,19 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 4. Switching the Obsidian appearance re-renders diagrams with the matching theme — including
    `%% cm:plain %%` diagrams and ones under a fixed (non-following) theme.
 5. Resizing the pane re-fits the diagram and keeps it centred; a very narrow pane does not overflow.
-6. `Ctrl/Cmd + scroll` zooms around the pointer; plain scroll still scrolls the note; drag pans;
-   double-click resets.
-7. `⤢` opens the fullscreen viewer filling the viewport, with the diagram scaled to fit that window
+6. `Ctrl/Cmd + scroll` zooms around the pointer; plain scroll still scrolls the note; drag pans.
+   **Double-clicking a diagram opens it expanded**, and only a double-click on the canvas counts
+   (clicking toolbar buttons must not open the viewer); switching *Interaction → Double-click action*
+   to *Reset zoom* or *Do nothing* changes the gesture without a reload.
+7. `⤢` (hover the card's top-right corner) and a double-click open the same expanded viewer, filling
+   the viewport, with the diagram scaled to fit that window
    (small diagrams get enlarged rather than pinned to 100 %). The adaptive-fit button shows both
    states: highlighted while on, and dragging any edge or corner re-fits the diagram as it resizes
    with the opposite side anchored; a manual zoom or pan clears the highlight and stops the
-   re-fitting, and clicking the button (or double-clicking, or pressing `0`) turns it back on; it
-   stops at the minimum/viewport limits; zoom/pan/100 %/Esc all behave; closing it leaves the inline
-   diagram untouched.
+   re-fitting, and clicking the button (or pressing `0`) turns it back on; it stops at the
+   minimum/viewport limits; zoom/pan/100 %/Esc all behave; **double-clicking anywhere in the window
+   closes it** (the image included), except a double-click that followed a drag; closing it leaves
+   the inline diagram untouched.
 8. `⋯`: PNG (with background), SVG, copy image and copy source all work.
 9. `%% cm:theme=neutral %%`, `%% cm:layout=dagre %%` and `%% cm:plain %%` behave as documented and
    never show up in the rendered diagram.
@@ -141,14 +146,23 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 12. Disabling the plugin restores Obsidian's own Mermaid rendering with no leftover DOM or
     console errors.
 13. Language setting: switching it re-labels the card toolbar, the `⋯` menu, the error card, the
-    fullscreen viewer and every notice right away, and the command palette entry follows too —
+    expanded viewer and every notice right away, and the command palette entry follows too —
     no plugin reload needed.
 14. Decision nodes: a flowchart `A{short label}` is a diamond hugging its label (wider than tall),
     the text stays fully inside it, edges meet the diamond's sides rather than floating, and
     `classDef` fill/stroke still applies. *Settings → Rendering → Decision node shape* switches
     between the compact diamond and mermaid's square one and re-renders existing cards; `%% cm:plain %%`
     blocks keep mermaid's square diamond regardless of that setting.
-15. `git status` and a text search confirm no vault paths, tokens or personal data are staged.
+15. Discoverability: the very first card rendered after installing shows a one-off notice that a
+    double-click opens the diagram expanded (it does not repeat); until a diagram has been expanded,
+    hovering a card shows the *Double-click the diagram to expand* label left of the toolbar buttons
+    (truncated in a very narrow pane), expanding any diagram removes the label from every card, and
+    the `⤢` tooltip stays the plain action name.
+    Setting *Double-click action* to anything else stops the label from rendering.
+16. Icon buttons show exactly one tooltip bubble: check `⋯`, `⤢`, the zoom badge and every button in
+    the expanded viewer. Two stacked bubbles mean the element carries both `aria-label` and `title`
+    (Obsidian renders the former, the browser adds one for the latter).
+17. `git status` and a text search confirm no vault paths, tokens or personal data are staged.
 
 ## Reporting issues
 

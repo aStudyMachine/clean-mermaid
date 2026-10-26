@@ -113,6 +113,24 @@ katex 0.16.47 → 0.18.10 即按此完成，升级前后结果逐字节一致。
 目视，且**空列表与已有条目两种状态都看**——同一根因下 `customThemes` 非空时主题编辑器（含
 `width:100%` 的 textarea）会被挤成窄条，只看空列表会漏掉这一半。
 
+## 宿主 UI 与交互
+
+### `aria-label` 就是 Obsidian 的悬浮提示数据源，与 `title` 并存必然双气泡
+
+**教训**：2026-10-26 维护者截图：悬停卡片 `⋯`，同一处叠着两个提示气泡。根因是按钮**同时**写了
+`aria-label` 与 `title`——Obsidian 按 `aria-label` 渲染自己的样式气泡，Chromium 又为 `title` 弹一个
+原生提示。这个写法从 0.1.x 就存在（`createEl("button", { attr: { "aria-label": …, title: … } })`），
+tsc、vitest、bot 复审全都看不见，只有真机悬停才现形。
+
+同一处认知偏差还直接导致过一次文案失误：当轮为了让「双击图表也能展开」挂在 `⤢` 上，把它塞进了
+`aria-label`，理由是「只给读屏软件读、鼠标悬停不会弹第二遍」——事实相反，`aria-label` 正是那个
+可见气泡的内容，结果是长句与左侧教学标签重复。**`aria-label` 在本宿主里不是纯无障碍属性。**
+
+**对策**：图标按钮的提示只走 `setTooltip(el, 文案)`（Obsidian 官方 API，内部写的就是 `aria-label`），
+**不再写 `title`**；多态按钮（查看器的自适应开关）换文案也只改 `aria-label`。复核方式：真机悬停数气泡，
+或 `grep -rnE 'attr: \{[^}]*title' src/*.ts` 应为空。护栏见 AGENTS.md「用户可见文案」那条之下，
+验收清单见 CONTRIBUTING「图标按钮只出一个气泡」。
+
 ## 改第三方打包内部（mermaid 形状表）
 
 ### 「自定义配置键能透传」是错觉，mermaid 只把已知键送到渲染期
@@ -275,5 +293,8 @@ SVG 哈希的断言。验证页是临时产物，比对完即删，不入库。
   AGENTS.md「动手前必知的事实」与 `.local/.env`（`scripts/obsidian-asar.mjs` 已做防呆校验）
 - main.js ~5.1 MiB 的取舍与全部复审「不修」理由 → `TODO.md` 第 1 条
 - mermaid 版本锁定与升级验证清单、i18n 文案、`cm-` 命名空间 → AGENTS.md 护栏
+- 术语口径（卡片 / 代码块 / 画布 / 展开查看 / plain 块 / 教学提示，含「不要用哪个词」）→
+  [GLOSSARY.md](../GLOSSARY.md)
+- 双击手势归属、教学提示为何不进设置 → [docs/adr/](adr/)
 - 对比图文案的 mermaid 文法三条约束（状态名 / ER 关系标签 / 时序图 `as`）与逐条词法依据 →
   `tests/browser/capture-diagrams.ts` 文件头注释

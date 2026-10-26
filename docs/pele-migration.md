@@ -219,7 +219,7 @@ mermaid 专属键在 Pele 下**无落点**，只能合并进 surface 系列。
 | `src/livepreview.ts`（237 行） | 事后替换官方部件 + `docViewUpdate` 同帧 + `mermaid-vault-trust` 信任门 | 接管骨架保留；**信任门必须在 1.15 上重核**（官方已删除该设置与闸门） |
 | `src/main.ts`（148 行） | 注册处理器 / 编辑器扩展 / `css-change` 重绘 | `css-change` 处理可简化（Pele 变量可 CSS 驱动），但字体变更仍需 `forgetTextWidths()` |
 | `src/export.ts`（192 行） | SVG → canvas → PNG / 下载 | 阶段 0 起已不依赖任何引擎（只靠 `render-engine` 类型 + `svg-utils`） |
-| `src/viewer.ts`（511 行） | 全屏查看器 | 同上，**不用动** |
+| `src/viewer.ts`（511 行） | 展开查看器 | 同上，**不用动** |
 | `src/fit.ts`（88 行） | 纯缩放计算 | **不用动** |
 | `src/i18n.ts` | 文案 | 需删/改与布局引擎、判断节点形状相关的条目 |
 | `styles.css` | 卡片 / 工具条 / live-guard | 主体不动；`.cm-media` 内部 SVG 的类名从 mermaid 变成 `pele-*`，需核查有无依赖 mermaid 类名的规则 |
@@ -229,7 +229,7 @@ mermaid 专属键在 Pele 下**无落点**，只能合并进 surface 系列。
 | `docs/obsidian-internals.md` | 大量 mermaid 12 配置语义 / 形状表逆向结论 | 大段失效，需标注「mermaid 时代结论」或归档 |
 
 **不受影响**：`src/export.ts`、`src/viewer.ts`、`src/fit.ts`、卡片外观与交互、PNG/SVG 导出、
-全屏查看器、图片化预览、按图 `%% cm:theme= %%` / `%% cm:plain %%` 语义。
+展开查看器、图片化预览、按图 `%% cm:theme= %%` / `%% cm:plain %%` 语义。
 
 ---
 

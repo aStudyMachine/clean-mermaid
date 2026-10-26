@@ -6,6 +6,8 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 文档地图（改动前先读对应那份，避免重复劳动）：
 [README.md](README.md) / [README.zh-CN.md](README.zh-CN.md) 特性与用法 ·
 [CONTRIBUTING.md](CONTRIBUTING.md) 环境、目录结构、实现约定、手动验收清单 ·
+[GLOSSARY.md](GLOSSARY.md) 卡片 / 画布 / 展开查看 / plain 块等术语的唯一口径（含「不要用哪个词」） ·
+[docs/adr/](docs/adr/) 难反转、后来者会问「为什么这么干」的决策记录 ·
 [docs/obsidian-internals.md](docs/obsidian-internals.md) 动渲染 / 主题 / 接管前必读的逆向结论 ·
 [docs/agent-lessons.md](docs/agent-lessons.md) 跨会话踩坑经验与对策（agent 共识，补录规则见文内） ·
 [docs/pele-migration.md](docs/pele-migration.md) 用 Pele 替换内置 mermaid 的调研与迁移规划（**未动工**，动渲染层前先读） ·
@@ -84,6 +86,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   （依据见 [docs/obsidian-internals.md](docs/obsidian-internals.md)）。Obsidian 官方那份 mermaid 不受影响，
   设置项「判断节点形状」可整体退回原生正方形，`%% cm:plain %%` 恒用原生。别把它扩大成第二类改写。
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
+- **图标按钮的悬浮提示只走 `setTooltip(el, 文案)`，绝不同时写 `title`**：Obsidian 按 `aria-label`（`setTooltip` 写的就是它）渲染自己的气泡，浏览器又为 `title` 弹一个原生提示，结果同一个按钮上叠着两个气泡。多态按钮（查看器的自适应开关）换文案也只改 `aria-label`。
 - 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `decision-shape.ts` / `fit.ts` / `themes.ts` / `i18n.ts`。
 - **渲染器只在 `mermaid-runtime.ts` 里 import**。上层（`block.ts` / `export.ts` / `viewer.ts` / `tests/browser/*`）一律走
   `renderer.ts`（引擎选择）与 `render-engine.ts`（类型契约）；SVG 字符串的通用处理放 `svg-utils.ts`。

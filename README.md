@@ -4,7 +4,7 @@
 
 Clean Mermaid renders every ` ```mermaid ` block in Obsidian as a tidy card: white canvas, soft
 violet nodes, generous whitespace and a floating toolbar — with **ELK layout**, auto-fit, zoom &
-pan, fullscreen view, PNG/SVG export and themable colours.
+pan, expanded view, PNG/SVG export and themable colours.
 
 ## Features
 
@@ -15,20 +15,21 @@ pan, fullscreen view, PNG/SVG export and themable colours.
 - **Auto-fit & centre** — diagrams scale with the pane width and are capped to a share of the
   viewport height, so a huge diagram never takes over the note.
 - **Zoom & pan** — `Ctrl/Cmd + scroll` zooms around the pointer (10 %–800 %), drag to pan a
-  zoomed-in diagram, double-click to reset. Plain scrolling still scrolls the note.
+  zoomed-in diagram. Plain scrolling still scrolls the note.
 - **Image preview** — diagrams are displayed as `<img>` (SVG data URL), so Obsidian themes and
   CSS snippets cannot restyle them; what you see is what you export.
 - **Export** — download a 2× PNG, an SVG, or copy the image / the Mermaid source from the `⋯` menu.
-- **Fullscreen viewer** (`⤢`) — opens filling the viewport (92 % × 88 %), with the diagram scaled to
-  fit that window (small diagrams get enlarged, up to 800 %); drag-resizable from any edge or corner,
-  re-fitting the diagram whenever the window changes. The toolbar's adaptive-fit button is a
-  **two-state switch** (on / off): while it is on the diagram keeps fitting the window, and any manual
-  zoom or pan flips it off so your zoom is never overwritten; double-click, press `0`, or click the
-  button again to turn it back on. Pan, wheel/pinch zoom, export.
+- **Expanded view** (double-click a diagram, or use `⤢` on the card) — opens filling the viewport
+  (92 % × 88 %), with the diagram scaled to fit that window (small diagrams get enlarged, up to
+  800 %); drag-resizable from any edge or corner, re-fitting the diagram whenever the window changes.
+  The toolbar's adaptive-fit button is a **two-state switch** (on / off): while it is on the diagram
+  keeps fitting the window, and any manual zoom or pan flips it off so your zoom is never overwritten;
+  press `0` or click the button again to turn it back on, and double-click anywhere inside the viewer
+  to close it. Pan, wheel/pinch zoom, export.
 - **4 built-in themes** — Clean Light, Clean Dark, Neutral, GitHub Light — plus **custom themes**
   as plain Mermaid `themeVariables` JSON, with validation.
 - **Light/dark aware** — follows the Obsidian appearance automatically and re-renders on switch.
-- **UI language** — the card toolbar, the `⋯` menu, the error card, the fullscreen viewer and every
+- **UI language** — the card toolbar, the `⋯` menu, the error card, the expanded viewer and every
   notice follow 中文 / English, or Obsidian's own interface language when set to "Auto".
 - **Per-diagram directives** — `%% cm:theme=... %%`, `%% cm:layout=dagre %%`, `%% cm:plain %%`.
 
@@ -106,11 +107,12 @@ flowchart TD
 
 | Action | Gesture |
 | --- | --- |
-| Zoom | `Ctrl`/`Cmd` + scroll (inline), wheel or pinch (fullscreen) |
+| Zoom | `Ctrl`/`Cmd` + scroll (inline), wheel or pinch (expanded view) |
 | Pan | Drag with the left mouse button (when zoomed in) |
-| Reset to auto-fit | Double-click, or `Reset zoom` in the `⋯` menu |
+| Open expanded | Double-click the diagram, or `⤢` in the card corner |
+| Close the expanded view | `Esc`, or double-click anywhere inside the viewer |
+| Reset to auto-fit | `Reset zoom` in the `⋯` menu, or click the zoom badge in the corner (the gesture can be given back to double-click in the settings) |
 | Menu | `⋯` in the card corner — PNG, SVG, copy image, copy source, reset |
-| Fullscreen | `⤢` in the card corner |
 
 ### Directives
 
@@ -150,7 +152,7 @@ configuration, `%%{init: ...}%%` cannot toggle it per block.
 | *(no heading, at the top)* | Plugin interface language (card toolbar, `⋯` menu, error card, viewer, notices): follow Obsidian automatically, 中文 or English |
 | Appearance | Light/dark theme, follow Obsidian appearance, fixed theme |
 | Layout | Layout engine (ELK/Dagre), ELK `mergeEdges`, ELK `nodePlacementStrategy`, auto-fit mode, max upscale, max height |
-| Interaction | Ctrl/Cmd + scroll zoom, drag to pan, toolbar visibility, double-click reset |
+| Interaction | Ctrl/Cmd + scroll zoom, drag to pan, toolbar visibility, double-click action (open expanded / reset zoom / do nothing) |
 | Rendering | Enable Clean Mermaid rendering, render as image, `%% cm: %%` directives, decision node shape (compact diamond / mermaid square) |
 | Export | PNG resolution (1×/2×/3×), PNG background (theme/transparent) |
 | Custom themes | Add, edit (JSON), delete; invalid JSON is rejected and the last valid version stays |
@@ -190,7 +192,8 @@ src/
   mermaid-runtime.ts  bundled mermaid + config injection + LRU cache
   themes.ts           built-in themes, custom theme parsing/resolution
   fit.ts              pure auto-fit math
-  viewer.ts           fullscreen pan/zoom modal, viewport-sized and drag-resizable
+  viewer.ts           expanded pan/zoom modal, viewport-sized and drag-resizable
+  hints.ts            one-time "double-click to expand" teaching flags (localStorage)
   export.ts           PNG/SVG/clipboard export helpers
   i18n.ts             language detection + the bilingual picker used by every label
   settings.ts         settings model + settings tab
