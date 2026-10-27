@@ -129,8 +129,13 @@ GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间�
 1. 抬版本 + 同步 lock，一次 chore 提交；本地 `npm test` + `npm run build` 通过，记下本机三个产物的 sha256 作为基准。
 2. 推开发分支。
 3. **对含改动的 commit 跑 `Review branch` 预览扫描**：`https://community.obsidian.md/account/plugins/<plugin-id>/review-branch`，输入框填 branch / tag / 完整 SHA（留空 = 默认分支），点 `Run preview scan`，等条目从 `Pending` 变 `Completed`，**正文里没有 Error 级才继续**。预览覆盖代码侧（Source code / CSS lint / Behavior / Dependencies），**但不含 `Releases` 与 `Build verification` 两节**（它没有 release 资产可比），所以产物侧结论仍要靠第 6 步的三方哈希。
+   - 点完会**跳到插件详情页** `community.obsidian.md/account/plugins/<plugin-id>`，结果不在 review-branch 表单页看。
+   - 该页是服务端渲染快照，**条目状态不会自己更新**：判定前先重新导航一次，否则一直读到 `Pending` 会误判「扫描卡住」。判定方式是读条目的 group 文本 `Date : … Version／Ref : X Commit : <Pending|Completed|Failed>`，轮询间隔 ≥60 秒。
+   - 实测耗时：预览约 **3 分钟**（正式 release 复审 1–2 分钟）。`Pending` 期间会先出 `CSS lint` / `Behavior`，`Source code` 与 `Dependencies` 后到 —— 此时缺项**不代表失败**，别急着下结论。
 4. 合到默认分支并推送 —— **这一步同时让 workflow 变得可触发**。
 5. 触发 **dry-run**（不勾 `publish`），等它成功。
+   - **「Workflow dispatch failed / Workflow could not be run」不等于配置有错**：实测头两次浏览器提交被 GitHub 拒，第三次原样重试即成功。先重试（2–3 次）再怀疑权限或 workflow 文件；重试前用 `gh workflow list` 确认 workflow 仍是 `active`。
+   - 勾 `publish` 时务必先 `evaluate` 把表单里**所有** `input` 的 `name / type / value` 打出来核对：布尔输入是 `hidden` + `checkbox` 成对，点 checkbox 只改后者，**提交时生效的是 hidden**（见第 5 节第 3 点）。
 6. **三方 sha256 比对**：本机基准 / CI 日志里「产物哈希」步骤 / release 资产的 digest。三者逐一相同才继续；**不同就停下来上报，不要放宽成「差不多就行」**。
 7. 再触发一次 `publish=true` 建 Release 并签名。
 8. 补中英双语 Release 说明（workflow 的 `notes` 只吃单行，留空时是占位句）。
@@ -144,6 +149,7 @@ GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间�
 
 - **`gh release view --json` 没有 `isLatest` 字段**。可用字段（实测列表）：`apiUrl assets author body createdAt databaseId id isDraft isImmutable isPrerelease name publishedAt tagName tarballUrl targetCommitish uploadUrl url zipballUrl`。要判断「最新」就用 `isDraft`/`isPrerelease` + `publishedAt`，或 `gh release list` 的首行。
 - **`gh attestation verify` 的 `--owner` 与 `--repo` 互斥**：同时给会报 `if any flags in the group [owner repo] are set none of the others can be`。只给 `--owner <owner>`。
+- **gh 的权限要分开看：`contents` 写通常可用，被拒的往往只有 Actions 写**。所以 `gh workflow run` 报 403 时，`gh release edit <tag> --notes-file <file>` 往往照样能写双语说明 —— 别因为一处 403 就把整条链路都搬去浏览器。
 - **`gh attestation verify` 的空输出不可信**。管道后 `echo exit=$?` 拿到的是 `tail` 的退出码，不是 gh 的。消费端验签证不了时，改从 workflow 日志取证：`gh run view <run-id> --log` 里应有一行 **`Attestation created for N subjects`**，并确认签名证书来自预期的 Sigstore 实例。
 - **`gh workflow run` 返回 `HTTP 403: Resource not accessible by integration`**：这里的 *integration* 指 GitHub App。真实原因是 gh 挂在一个 App 的 user-to-server 令牌上（前缀 `ghu_`），而**该 App 安装没有被授予 Actions 写权限** —— 与 workflow 文件本身无关，同一次检查里 workflow 已注册为 active 就是旁证。
   - 令牌类型靠前缀认：`ghu_` = GitHub App user-to-server；`github_pat_` = 细粒度 PAT；`ghp_` = classic。**「响应里没有 `X-OAuth-Scopes` 头」不能用来判定细粒度 PAT** —— App 令牌同样没有这个头，据此推断会得出错原因。

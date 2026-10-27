@@ -113,6 +113,19 @@ katex 0.16.47 → 0.18.10 即按此完成，升级前后结果逐字节一致。
 目视，且**空列表与已有条目两种状态都看**——同一根因下 `customThemes` 非空时主题编辑器（含
 `width:100%` 的 textarea）会被挤成窄条，只看空列表会漏掉这一半。
 
+### 社区目录那两页是服务端渲染快照，状态不会自己更新
+
+**教训**：2026-10-27 发 0.1.9 时，`review-branch` 点完 `Run preview scan` 会跳到插件详情页；页面上的
+条目状态（`Pending` → `Completed`）**不会随扫描完成自动刷新**，反复 `observe` 只会一遍遍读到旧的
+`Pending`，看上去像「扫描卡住」。而且 `Pending` 期间 `CSS lint` / `Behavior` 已经先出，
+`Source code` / `Dependencies` 后到——缺项容易被当成失败。实测预览约 3 分钟、release 复审 1–2 分钟。
+
+**对策**：每次判定前**先重新导航该页**再读，判据是条目的 group 文本
+`Date : … Version／Ref : X Commit : <Pending|Completed|Failed>`，轮询间隔 ≥60 秒。该站点是 Next.js RSC，
+没有可直取的 JSON 接口（页面只 hydrate 出导航栏时用 `fetch('/account/plugins/<id>')` + `DOMParser`
+取载荷）。流程细节见 [.agents/skills/obsidian-plugin-release/SKILL.md](../.agents/skills/obsidian-plugin-release/SKILL.md)
+第 3 / 6 节，这里只记「为什么会误判」。
+
 ## 宿主 UI 与交互
 
 ### `aria-label` 就是 Obsidian 的悬浮提示数据源，与 `title` 并存必然双气泡
