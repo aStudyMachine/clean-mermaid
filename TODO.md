@@ -2,7 +2,14 @@
 
 滚动删除：完成一项即删一行，不留历史。
 
-1. [ ] 0.1.8（commit `7e410be`，2026-10-19）正式复审已 Completed、无 Error；4 条 Warning
+1. [ ] 0.1.9（commit `7c3bc96`，2026-10-27）正式复审已 Completed、无 Error；5 条 Warning 里
+   4 条为下述既有「不修」项，新增 1 条依赖公告（见第 6 条）。Recommendation 为剪贴板访问与
+   **localStorage**（新增：`src/hints.ts` 用 localStorage 存「双击展开」的教学标记而非插件 data
+   API —— 那是教学状态不是配置，理由见 [docs/adr/0002-teaching-hints-for-discoverability.md](docs/adr/0002-teaching-hints-for-discoverability.md)，
+   维持不改）；`Build verification` 的 main.js 字节级复现与两项 attestation 均 Pass。发布提交的
+   branch 预览 Completed、无 Error；dry-run 与正式发布均成功，本机 / CI / Release 三个产物的
+   sha256 逐项一致（`d9c6eb34` / `e931cba7` / `682bad8c`）。
+   0.1.8（commit `7e410be`，2026-10-19）正式复审已 Completed、无 Error；4 条 Warning
    均为下述既有「不修」项，Recommendation 只剩剪贴板访问（`mermaidAPI` 弃用已消失）；
    两项产物 attestation、依赖漏洞检查与 main.js 字节级构建复现均 Pass。发布提交的 branch
    预览 Completed、无 Error；dry-run 与正式发布均成功，本机 / CI / Release 三个产物的
@@ -50,3 +57,8 @@
    待办分解：① ~~阶段 0（抽薄接口，不改行为）~~ **已完成**；
    ② 等 Obsidian 1.15 正式版 asar 发布后，用 `scripts/scan-asar.mjs` 重核接管选择器 / 信任门 /
    `docViewUpdate`（文档第 10 节）；③ 第 8 节 6 个决策点需维护者拍板后才进阶段 1。
+6. [ ] **dompurify 漏洞公告**（0.1.9 复审新报）：mermaid 12.1.0 的传递依赖锁在 `dompurify@3.4.16`，
+   落在公告区间 `>=3.4.4 <=3.4.16` 内，且确实打进 main.js。修法与 katex 同路（`overrides` 升到
+   `>=3.4.17`），但按既有约定要**用例先行**：先确认 mermaid 的 SVG/HTML 净化路径有可复核用例，
+   再改 overrides、跑两套 `test:browser` 页面 + 截图目检、记录 main.js 体积变化。
+   Warning 级，不阻断 listing，不必为它插队。
