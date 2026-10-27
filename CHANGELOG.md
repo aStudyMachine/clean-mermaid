@@ -4,7 +4,7 @@
 格式参考 Keep a Changelog，版本号遵循语义化版本；最新条目在最上面。
 中英双语发布说明见 GitHub Release。
 
-## [Unreleased]
+## [0.1.9] - 2026-10-27
 
 ### 新增
 
