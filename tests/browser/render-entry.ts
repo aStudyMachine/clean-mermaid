@@ -251,6 +251,33 @@ async function main(): Promise<void> {
 	} catch (error) {
 		results.push({ check: "katex math", error: error instanceof Error ? error.message : String(error) });
 	}
+
+	// SVG 净化：安全级别为 loose，标签里的 HTML 必须经 mermaid 的 DOMPurify 过滤。
+	// 升级带净化的传递依赖前后都跑这条 —— 带事件处理器的负载不能以可执行属性落进输出。
+	try {
+		const payload = await renderDiagram({
+			code: 'flowchart TD\n  A["<img src=x onerror=window.__cmXss=1>"] --> B[ok]',
+			theme: BUILTIN_THEMES[0],
+			layout: "elk",
+			elkMergeEdges: "default",
+			elkNodePlacement: "default",
+			decisionShape: "compact",
+			plain: false,
+		});
+		const holder = document.createElement("div");
+		holder.innerHTML = payload.svg;
+		document.body.appendChild(holder);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		results.push({
+			check: "svg sanitization",
+			payloadInOutput: /onerror/i.test(payload.svg),
+			executableAttributeKept: holder.querySelector("[onerror]") !== null,
+			xssExecuted: (window as unknown as Record<string, unknown>).__cmXss === 1,
+		});
+		holder.remove();
+	} catch (error) {
+		results.push({ check: "svg sanitization", error: error instanceof Error ? error.message : String(error) });
+	}
 }
 
 main()
