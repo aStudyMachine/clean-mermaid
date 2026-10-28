@@ -23,6 +23,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@codemirror/view": "6.38.6",
     "mermaid": "12.1.0"
   },
   "overrides": {
