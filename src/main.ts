@@ -145,10 +145,10 @@ export default class CleanMermaidPlugin extends Plugin {
 			return;
 		}
 		this.viewerHintShown = true;
-		if (viewerHintAnnounced() || viewerOpened()) {
+		if (viewerHintAnnounced(this.app) || viewerOpened(this.app)) {
 			return;
 		}
-		markViewerHintAnnounced();
+		markViewerHintAnnounced(this.app);
 		new Notice(
 			this.t(
 				"Clean Mermaid: double-click a diagram to open it expanded.",

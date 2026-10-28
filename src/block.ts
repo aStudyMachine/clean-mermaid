@@ -204,7 +204,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		// 「双击展开」的教学标签：只在还没展开过任何图表、且双击确实绑在展开上时渲染。
 		// 两个条件缺一不可 —— 双击被改成复位或不响应之后，这句话就成了假的。
 		// 文案写全整句而不是「双击展开」四个字：这一行就是这两处入口唯一的解释，别让用户自己补主语。
-		if (!viewerOpened() && plugin.settings.doubleClickAction === "viewer") {
+		if (!viewerOpened(plugin.app) && plugin.settings.doubleClickAction === "viewer") {
 			toolbar.createDiv({
 				cls: "cm-toolbar-hint",
 				text: plugin.t("Double-click the diagram to expand", "双击图表也能展开"),
@@ -507,7 +507,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			return;
 		}
 		// 展开过一次就算学会了：把各张卡片上的「双击展开」标签一起撤掉，之后只剩工具条按钮。
-		markViewerOpened();
+		markViewerOpened(this.plugin.app);
 		this.plugin.dismissViewerHints();
 		new DiagramViewerModal(this.plugin.app, this.plugin, {
 			rendered: this.rendered,
