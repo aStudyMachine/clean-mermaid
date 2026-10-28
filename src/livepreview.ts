@@ -125,7 +125,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 					this.managed.delete(widget);
 				}
 
-				const host = widget.createEl("div", { cls: HOST_CLASS });
+				const host = widget.createDiv({ cls: HOST_CLASS });
 
 				const block = new CleanMermaidBlock(host, source, undefined, plugin);
 				this.managed.set(widget, { source, block });
