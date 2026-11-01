@@ -16,7 +16,13 @@ const VIEWER_MAX_HEIGHT_RATIO = 0.88;
 
 export interface ViewerData {
 	rendered: RenderedDiagram;
+	/** 导出用的背景；`null` 表示保持透明（对应「PNG 背景」设置）。 */
 	background: string | null;
+	/**
+	 * 预览画布的底色，恒为主题画布色 —— **不要**跟导出设置串用。
+	 * SVG 本身不带背景，画布透明就等于把图贴在模态框/页面底色上，浅色主题的深色文字会直接消失。
+	 */
+	canvas: string;
 	source: string;
 }
 
@@ -83,7 +89,7 @@ export class DiagramViewerModal extends Modal {
 		this.buildToolbar();
 
 		const stage = this.contentEl.createDiv({ cls: "cm-modal-stage" });
-		stage.style.setProperty("--cm-modal-bg", this.data.background ?? "transparent");
+		stage.style.setProperty("--cm-modal-bg", this.data.canvas);
 		this.stageEl = stage;
 
 		const media = stage.createEl("img", { cls: "cm-modal-media" });

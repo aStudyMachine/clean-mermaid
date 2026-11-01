@@ -154,6 +154,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		const image = wrap.createEl("img", { cls: "cm-media-plain" });
 		image.src = svgToDataUrl(rendered.svg);
 		image.draggable = false;
+		this.suppressNativeImageLightbox(image);
 		this.mediaEl = image;
 	}
 
@@ -279,7 +280,25 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		}
 	}
 
+	/**
+	 * 挡住阅读视图自带的「图片灯箱」。
+	 *
+	 * Obsidian 在 `.markdown-preview-sizer` 上委托了 `img,video` 的 click / contextmenu，
+	 * 命中就 `new Lightbox(...).open()` —— 黑底、90% 不透明，里面只有我们那张没有背景的
+	 * SVG，所以单击图表会突然弹出「黑底透明预览」。关掉插件时官方渲染的是内联 `<svg>`，
+	 * 单击没有任何反应；我们这两种形态（图片化预览、plain 块）都是 `<img>`，必须保持同样静止。
+	 *
+	 * 拦法用 `preventDefault`：官方那段委托处理函数第一句就是 `if (event.defaultPrevented) return`，
+	 * 比只 `stopPropagation` 更稳（不依赖监听的相位）。挂在 `<img>` 的祖先上即可 —— 冒泡先到祖先，
+	 * 再到 `.markdown-preview-sizer`。
+	 */
+	private suppressNativeImageLightbox(el: HTMLElement): void {
+		this.registerDomEvent(el, "click", (event: MouseEvent) => event.preventDefault());
+		this.registerDomEvent(el, "contextmenu", (event: MouseEvent) => event.preventDefault());
+	}
+
 	private bindInteractions(canvas: HTMLDivElement): void {
+		this.suppressNativeImageLightbox(canvas);
 		this.registerDomEvent(
 			canvas,
 			"wheel",
@@ -512,6 +531,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		new DiagramViewerModal(this.plugin.app, this.plugin, {
 			rendered: this.rendered,
 			background: this.plugin.settings.pngBackground === "theme" ? themeCanvasColor(this.theme) : null,
+			canvas: themeCanvasColor(this.theme),
 			source: this.source,
 		}).open();
 	}
