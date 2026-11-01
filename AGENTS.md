@@ -111,6 +111,10 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   mermaid**（1.14.4 为 11.13.0）取到 `tests/browser/obsidian-mermaid.min.js`（已 gitignore），后者构建两个
   捕获页并把 PNG 写进 `images/`。「原生」一侧必须用取出来的这份 —— mermaid 12 起 flowchart 默认布局就是
   ELK，用插件自带的 12.1.0 复现原生会得到两张一样的图。
+- `npm run verify:takeover`：把接管依赖的 Obsidian 侧事实（阅读视图后处理器排序、实时预览硬编码
+  mermaid、`docViewUpdate` 钩子、信任键、图片灯箱、内置 mermaid 版本）逐条对着 asar 断言，输出 PASS/FAIL
+  （`scripts/verify-takeover.mjs` 里的清单与 [docs/obsidian-internals.md](docs/obsidian-internals.md) 一一对应）。
+  **升级 Obsidian 后先跑它**：任一项 FAIL 就说明某条逆向结论作废，按文档重新检索后再动接管。
 - `npm run deploy -- <库名> [<库名> …]`：一键跑「单测 → 构建 → 拷贝产物」，库名由 Obsidian 自己的
   vault 注册表换算成路径（`--no-check` 只拷现有产物；`--restart` 部署完重启 Obsidian，仅 Windows，
   会关掉所有库，只在维护者明确要求时用）。目标全部解析成功才开始构建，之后仍需重载插件（不会热更新）。

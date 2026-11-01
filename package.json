@@ -11,6 +11,7 @@
     "test:browser": "node tests/browser/build.mjs && node tests/browser/serve.mjs",
     "shots": "node tests/browser/build.mjs capture && node tests/browser/capture-server.mjs",
     "extract-mermaid": "node scripts/extract-obsidian-mermaid.mjs",
+    "verify:takeover": "node scripts/verify-takeover.mjs",
     "deploy": "node scripts/deploy.mjs"
   },
   "keywords": [
