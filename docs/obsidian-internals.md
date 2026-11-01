@@ -1,8 +1,10 @@
 # Obsidian / mermaid 逆向结论（动渲染、主题、接管前必读）
 
-结论来源：直接检查本机 Obsidian 1.14.4 的 `app.asar`（`%APPDATA%\obsidian\obsidian-<version>.asar`），
-按关键词在 asar 内检索并打印命中位置上下文。Obsidian 升级后若接管失效，先重新检索确认下面这些
-结论是否仍然成立，再改代码。
+结论来源：直接检查本机 Obsidian `app.asar`（`%APPDATA%\obsidian\obsidian-<version>.asar`，取**实际运行**的那份，
+见 AGENTS.md「本机运行版本 ≠ 安装目录版本」），按关键词在 asar 内检索并打印命中位置上下文 ——
+接管与 mermaid 配置那几节核对的是 1.14.4，图片灯箱那一节是 1.14.5；**2026-11-01 在 1.14.5 上整体重跑
+`npm run verify:takeover`，24 项全部成立**，本文件因此没有需要改的结论。Obsidian 升级后若接管失效，
+先跑同一条命令（清单与本文一一对应），任一项 FAIL 再按章节重新检索，然后才改代码。
 
 ## 代码块渲染的三条路径
 
@@ -43,6 +45,37 @@
 - **镜像信任门**：官方在编辑视图渲染 mermaid 前会检查 vault 级 localStorage 键 `mermaid-vault-trust`，
   未信任时展示 `div.mermaid-wrapper.is-guarded` + 「允许」按钮。我们两个条件都查，未信任就不接管；
   维护者点「允许」后官方触发重渲染，我们随即接管。
+
+## 阅读视图的图片灯箱（`<img>` 单击 / 右键）
+
+本机 Obsidian 1.14.5 的 `app.asar` 里核实：阅读视图会给**它范围内所有 `<img>`** 挂一个打开灯箱的委托监听。
+我们的卡片只要把图做成 `<img>`，单击就会被它劫走。
+
+- 委托点在 `.markdown-preview-sizer` 上：`t.on("click", "img,video", s)` 与
+  `t.on("contextmenu", "img,video", s)`（同一批注册里还有 `a.internal-link` / `a.external-link` / `a.tag`）。
+- 处理函数 `handleMediaClick(event, target)` 只认 `target.instanceOf(HTMLImageElement)`：命中后遍历
+  `this.sections[].el.findAll("img")` 收集**同一视图里的全部图片**，把被点的那张作为初始索引，
+  再 `new <灯箱类>(items, index, imgEl, onClose).open()` —— 所以灯箱里可以左右翻到同笔记里其它图片。
+- 灯箱本体不是模态框：`createDiv("lightbox")`，内含 `.lightbox-bg` / `.lightbox-content > .lightbox-media` /
+  `.lightbox-titlebar`，`position: absolute; inset: 0; z-index: var(--layer-modal)`，`--lightbox-background: black`
+  且实例上 `bgOpacity = "0.9"`。→ **黑底 90% 不透明**。（asar 里另有 `.modal.mod-image-lightbox` 一组样式，
+  与这条的关系未核实；阅读视图这条路径建的是 `div.lightbox`。）
+- `belongsToMe(el, sizer, onDetached)` 沿父链往上找，碰到 `.markdown-preview-view` / `.bases-view` 就返回
+  `false` —— 所以模态框里的 `<img>`（例如我们查看器的 `.cm-modal-media`）不会被劫持，只有内联在预览
+  sizer 里的图会。
+- **让路的口子在处理函数第一句**：`if (event.defaultPrevented) return`。我们因此在 `<img>` 的祖先上
+  preventDefault（`src/block.ts` 的 `suppressNativeImageLightbox()`，click 与 contextmenu 都拦），
+  比 `stopPropagation` 稳，不依赖监听相位。
+
+为什么只有本插件会撞上：官方渲染 mermaid 得到的是内联 `<svg>`，不匹配 `img,video` 选择器，单击天然无反应；
+我们的「图片化预览」（`imageify`）与 plain 块都产出 `<img src="data:image/svg+xml,…">`。而 mermaid 的 SVG
+**不带背景矩形**（卡片/预览的底色一直是外部 CSS 给的），所以灯箱里打开就是「黑底 + 只有亮色节点」，
+深色说明文字直接消失。同一张图在卡片里被 90% 黑压过之后，节点填充会从 `#ECECFF` 掉到 `#17–#1F` 一带，
+很容易被误读成「浅色配色配了深色底色」（实测 `#ECECFF` → `#171719`）——量像素前先想一下这层遮罩。
+
+升级复核：若某天单击又开始弹预览，先确认委托选择器仍是 `img,video`、`defaultPrevented` 那道闸还在；
+若监听改到捕获相位，preventDefault 仍有效（它不依赖相位），但改成「只在 `.markdown-preview-sizer` 上
+判断 target」之类的结构时，我们挂在画布上的判断点就要跟着换。
 
 ## mermaid 12 的配置语义
 
