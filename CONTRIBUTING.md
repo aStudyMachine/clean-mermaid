@@ -127,7 +127,10 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 6. `Ctrl/Cmd + scroll` zooms around the pointer; plain scroll still scrolls the note; drag pans.
    **Double-clicking a diagram opens it expanded**, and only a double-click on the canvas counts
    (clicking toolbar buttons must not open the viewer); switching *Interaction → Double-click action*
-   to *Reset zoom* or *Do nothing* changes the gesture without a reload.
+   to *Reset zoom* or *Do nothing* changes the gesture without a reload. **A single click (or a
+   right-click) on the diagram does nothing** — in particular it must not open Obsidian's built-in
+   image lightbox (black, 90 % opaque, showing nothing but our background-less SVG); with the plugin
+   off, clicking the built-in rendering does nothing either, so the two must match.
 7. `⤢` (hover the card's top-right corner) and a double-click open the same expanded viewer, filling
    the viewport, with the diagram scaled to fit that window
    (small diagrams get enlarged rather than pinned to 100 %). The adaptive-fit button shows both
@@ -137,7 +140,9 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
    minimum/viewport limits; zoom/pan/100 %/Esc all behave; **double-clicking anywhere in the window
    closes it** (the image included), except a double-click that followed a drag; closing it leaves
    the inline diagram untouched.
-8. `⋯`: PNG (with background), SVG, copy image and copy source all work.
+8. `⋯`: PNG (with background), SVG, copy image and copy source all work. Setting *PNG background*
+   to *Transparent* does drop the exporter's backdrop, but **the expanded viewer's canvas still paints
+   the theme colour** (preview and export no longer share one setting).
 9. `%% cm:theme=neutral %%`, `%% cm:layout=dagre %%` and `%% cm:plain %%` behave as documented and
    never show up in the rendered diagram.
 10. Custom themes: invalid JSON is rejected and keeps the previous value; valid JSON applies
