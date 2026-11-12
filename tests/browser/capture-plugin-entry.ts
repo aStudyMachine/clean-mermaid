@@ -2,13 +2,15 @@ import { BUILTIN_THEMES, themeCanvasColor } from "../../src/themes";
 import { renderDiagram } from "../../src/renderer";
 import { CAPTURE_DIAGRAMS, CAPTURE_LANGUAGES } from "./capture-diagrams";
 import { postJson, rasteriseToPng, showError, sizeSvg } from "./capture-shared";
+import { initializeHostFixture } from "./host-fixture";
 
-/** 出厂默认：ELK + Clean Light + 明色文档。 */
+/** 当前实验分支：宿主 Pele + Clean Light + 明色文档。 */
 const CLEAN_LIGHT = BUILTIN_THEMES.find((theme) => theme.id === "clean-light") ?? BUILTIN_THEMES[0];
 
 const SIDE = "plugin";
 
 async function main(): Promise<void> {
+	initializeHostFixture();
 	// 先把字体交给浏览器落定再开始渲染：首张图若赶在字体就绪前量尺寸，会拿回退字体的度量画一遍。
 	await document.fonts.ready;
 

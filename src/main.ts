@@ -1,13 +1,14 @@
-import { getLanguage, MarkdownPostProcessorContext, Notice, Plugin } from "obsidian";
+import { getLanguage, loadMermaid, MarkdownPostProcessorContext, Notice, Plugin, sanitizeHTMLToDom } from "obsidian";
 import { CleanMermaidBlock } from "./block";
 import { markViewerHintAnnounced, viewerHintAnnounced, viewerOpened } from "./hints";
 import { pick, resolveLanguage, type Language } from "./i18n";
 import { createLivePreviewExtension } from "./livepreview";
 import { CleanMermaidSettingTab, DEFAULT_SETTINGS, migrateSettings, type CleanMermaidSettings } from "./settings";
+import { initializePele, invalidatePele } from "./renderer";
 
 /**
  * Clean Mermaid —— 把每个 ```mermaid 代码块渲染成一张干净的卡片：
- * ELK 布局、自适应、缩放平移、图片预览、PNG/SVG 导出与主题。
+ * 宿主 Pele 布局、自适应、缩放平移、图片预览、PNG/SVG 导出与主题。
  */
 export default class CleanMermaidPlugin extends Plugin {
 	settings: CleanMermaidSettings = structuredClone(DEFAULT_SETTINGS);
@@ -21,6 +22,15 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
+		// 先装好宿主运行时，冷渲染也必须在 docViewUpdate 当帧完成。
+		await loadMermaid();
+		if (!window.pele) throw new Error("Clean Mermaid requires Obsidian 1.15 or later with Pele");
+		initializePele(window.pele, (svg) => {
+			const root = sanitizeHTMLToDom(svg).querySelector("svg");
+			if (!root) throw new Error("Pele returned an invalid SVG");
+			return new XMLSerializer().serializeToString(root);
+		});
+		await document.fonts.ready;
 
 		// 阅读视图：在 Obsidian 自带的 mermaid 后处理器之前接管 `mermaid` 代码块语言
 		// （sortOrder -100）。
@@ -47,8 +57,11 @@ export default class CleanMermaidPlugin extends Plugin {
 		this.registerCommands();
 
 		// 外观切换（浅色/深色、主题变更）需要重渲染，因为
-		// themeVariables 已经烘进 SVG 里了。
-		this.registerEvent(this.app.workspace.on("css-change", () => this.refreshAll()));
+		// Pele 主题变量已经烘进 SVG 里了。
+		this.registerEvent(this.app.workspace.on("css-change", () => this.refreshAppearance()));
+		const fontsChanged = (): void => this.refreshAppearance();
+		document.fonts.addEventListener("loadingdone", fontsChanged);
+		this.register(() => document.fonts.removeEventListener("loadingdone", fontsChanged));
 	}
 
 	onunload(): void {
@@ -128,8 +141,14 @@ export default class CleanMermaidPlugin extends Plugin {
 		}
 	}
 
+	private refreshAppearance(): void {
+		invalidatePele();
+		this.refreshAll();
+	}
+
 	/** 强制重画，绕过「什么都没变」的短路。 */
 	redrawAll(): void {
+		invalidatePele();
 		for (const block of this.blocks) {
 			void block.refresh(true);
 		}

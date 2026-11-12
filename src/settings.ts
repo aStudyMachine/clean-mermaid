@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import type { LanguageSetting } from "./i18n";
+import { unmappedThemeFields } from "./pele-theme";
 import {
 	BUILTIN_THEMES,
 	allThemes,
@@ -233,52 +234,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 				type: "group",
 				heading: t("Layout", "布局"),
 				items: [
-					{
-						name: t("Layout engine", "布局引擎"),
-						desc: t(
-							"ELK gives cleaner layouts for complex flowcharts. Dagre is the classic mermaid engine.",
-							"ELK 对复杂流程图排布更清晰；Dagre 是 mermaid 的经典引擎。",
-						),
-						control: {
-							type: "dropdown",
-							key: "layoutEngine",
-							options: { elk: t("ELK (default)", "ELK（默认）"), dagre: "Dagre" },
-						},
-					},
-					{
-						name: t("ELK: merge edges", "ELK：合并连线"),
-						desc: t(
-							"Merge edges that connect the same node pair. “Mermaid default” leaves the engine's own setting untouched.",
-							"合并连接同一对节点的多条连线；选「Mermaid 默认」则不改动引擎自带设置。",
-						),
-						control: {
-							type: "dropdown",
-							key: "elkMergeEdges",
-							options: {
-								default: t("Mermaid default", "Mermaid 默认"),
-								on: t("Merge edges", "合并"),
-								off: t("Keep separate", "保持分开"),
-							},
-						},
-					},
-					{
-						name: t("ELK: node placement strategy", "ELK：节点排布策略"),
-						desc: t(
-							"Node ordering strategy used by the layered ELK algorithm.",
-							"ELK 分层算法使用的节点排序策略。",
-						),
-						control: {
-							type: "dropdown",
-							key: "elkNodePlacement",
-							options: {
-								default: t("Mermaid default", "Mermaid 默认"),
-								NETWORK_SIMPLEX: t("Network simplex", "网络单纯形"),
-								BRANDES_KOEPF: "Brandes–Koepf",
-								LINEAR_SEGMENTS: t("Linear segments", "线性分段"),
-								SIMPLE: t("Simple", "简单"),
-							},
-						},
-					},
+					{ name: t("Pele layout", "Pele 布局"), desc: t("This experimental build uses Pele’s native layout and decision shapes. Saved ELK/Dagre and compact-shape settings are retained for reverting.", "本实验版使用 Pele 原生布局和判断节点形状；原有 ELK/Dagre 与紧凑菱形设置仍保留，方便退回原版。") },
 					{
 						name: t("Auto-fit", "自适应方式"),
 						desc: t(
@@ -366,8 +322,8 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 					{
 						name: t("Enable Clean Mermaid rendering", "启用 Clean Mermaid 渲染"),
 						desc: t(
-							"When off, diagrams are rendered with mermaid's stock look instead of the clean card.",
-							"关闭后图表改用 mermaid 原生外观渲染，不再套用卡片样式。",
+							"When off, diagrams are rendered with Obsidian’s native colours instead of the clean card.",
+							"关闭后图表改用 Obsidian 原生配色渲染，不再套用卡片样式。",
 						),
 						control: { type: "toggle", key: "enableRendering" },
 					},
@@ -382,26 +338,12 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 					{
 						name: t("Support %% cm: %% directives", "支持 %% cm: %% 指令"),
 						desc: t(
-							"Allow per-diagram overrides like %% cm:theme=neutral %%, %% cm:layout=dagre %% and %% cm:plain %%.",
-							"允许按图覆盖设置，例如 %% cm:theme=neutral %%、%% cm:layout=dagre %%、%% cm:plain %%。",
+							"Allow per-diagram overrides like %% cm:theme=neutral %% and %% cm:plain %% (legacy cm:layout is ignored).",
+							"允许按图覆盖设置，例如 %% cm:theme=neutral %%、%% cm:plain %%（旧 cm:layout 不再生效）。",
 						),
 						control: { type: "toggle", key: "enableDirectives" },
 					},
-					{
-						name: t("Decision node shape", "判断节点形状"),
-						desc: t(
-							"mermaid draws a decision as a square diamond whose side is the label's width plus its height, so a one-line label sits in a lot of empty space. “Compact” keeps the diamond but sizes it to the label. Plain blocks (%% cm:plain %%) always use mermaid's own square.",
-							"mermaid 把判断节点画成正方形菱形，边长等于标签宽度加高度，所以一行文字会被撑进一大片空白。「紧凑」保留菱形、但让尺寸贴着文字量。「原生」即 mermaid 内置画法。plain 块（%% cm:plain %%）恒用原生正方形。",
-						),
-						control: {
-							type: "dropdown",
-							key: "decisionShape",
-							options: {
-								compact: t("Compact diamond (default)", "紧凑菱形（默认）"),
-								native: t("mermaid square", "mermaid 正方形"),
-							},
-						},
-					},
+
 				],
 			},
 			{
@@ -480,8 +422,8 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
 			text: t(
-				"A custom theme is a plain Mermaid themeVariables object. Start from a built-in theme, then adjust the colours. Invalid JSON is rejected and the last valid version stays in effect.",
-				"自定义主题就是一份 Mermaid themeVariables JSON。可从内置主题复制后调整配色；非法 JSON 会被拒绝并保留上一版生效值。",
+				"Keep editing Mermaid themeVariables JSON. Pele receives an approximate colour mapping; unsupported fields are preserved. Invalid JSON keeps the last valid value.",
+				"继续编辑 Mermaid themeVariables JSON；配色会近似转换给 Pele，未映射字段保留原值。非法 JSON 会保留上一版生效值。",
 			),
 		});
 
@@ -573,6 +515,13 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 		textarea.spellcheck = false;
 		textarea.setAttribute("rows", "10");
 
+		const compatibility = block.createDiv({ cls: "setting-item-description" });
+		const showCompatibility = (variables: Record<string, unknown>): void => {
+			const fields = unmappedThemeFields(variables);
+			compatibility.setText(fields.length ? `${t("Preserved without an equivalent mapping: ", "已保留但暂无等价映射：")}${fields.join(", ")}` : "");
+		};
+		showCompatibility(theme.variables);
+
 		const status = block.createDiv({
 			cls: "cm-theme-status",
 			text: t("Valid themeVariables JSON", "themeVariables JSON 合法"),
@@ -598,6 +547,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 				status.removeClass("cm-invalid");
 				textarea.removeClass("cm-invalid");
 				theme.variables = result.variables;
+				showCompatibility(result.variables);
 				void plugin.saveSettings().then(() => plugin.refreshAll());
 			}, 600);
 		});

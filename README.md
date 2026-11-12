@@ -3,15 +3,18 @@
 [![English](https://img.shields.io/badge/lang-English-blue)](README.md) [![简体中文](https://img.shields.io/badge/lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README.zh-CN.md)
 
 Clean Mermaid renders every ` ```mermaid ` block in Obsidian as a tidy card: white canvas, soft
-violet nodes, generous whitespace and a floating toolbar — with **ELK layout**, auto-fit, zoom &
+violet nodes, generous whitespace and a floating toolbar — with **Obsidian’s built-in Pele**, auto-fit, zoom &
 pan, expanded view, PNG/SVG export and themable colours.
+
+This experimental branch requires **Obsidian 1.15+**. Layout and decision shapes use Pele’s native
+behaviour. It is a prototype for comparison, not a new published release.
 
 ## Features
 
 - **Every ` ```mermaid ` block is rendered by this plugin** (reading view and live preview) with a
   clean card: centred diagram, auto-fit to the editor width, subtle border, floating controls.
-- **ELK layout engine by default** — complex flowcharts get the nicer layered layout. Switch to
-  Dagre globally or per diagram when you prefer it.
+- **Host Pele renderer** — uses Obsidian’s own engine without bundling another Mermaid runtime.
+  Layout and decision-node geometry follow Pele; ELK/Dagre switching is unavailable.
 - **Auto-fit & centre** — diagrams scale with the pane width and are capped to a share of the
   viewport height, so a huge diagram never takes over the note.
 - **Zoom & pan** — `Ctrl/Cmd + scroll` zooms around the pointer (10 %–800 %), drag to pan a
@@ -27,15 +30,18 @@ pan, expanded view, PNG/SVG export and themable colours.
   press `0` or click the button again to turn it back on, and double-click anywhere inside the viewer
   to close it. Pan, wheel/pinch zoom, export.
 - **4 built-in themes** — Clean Light, Clean Dark, Neutral, GitHub Light — plus **custom themes**
-  as plain Mermaid `themeVariables` JSON, with validation.
+  as Mermaid `themeVariables` JSON, with validation. Colours and fonts are converted to Pele;
+  unsupported fields are listed in the editor and the original data is preserved.
 - **Light/dark aware** — follows the Obsidian appearance automatically and re-renders on switch.
 - **UI language** — the card toolbar, the `⋯` menu, the error card, the expanded viewer and every
   notice follow 中文 / English, or Obsidian's own interface language when set to "Auto".
-- **Per-diagram directives** — `%% cm:theme=... %%`, `%% cm:layout=dagre %%`, `%% cm:plain %%`.
+- **Per-diagram directives** — `%% cm:theme=... %%` and `%% cm:plain %%`. Legacy layout directives are
+  recognised and ignored.
 
 ## Rendering comparison
 
-Every pair below is the same diagram source. **Left** is this plugin with its factory defaults (ELK
+These images document the previous bundled-Mermaid implementation on Obsidian 1.14.4; they do not
+represent this Pele prototype or current Obsidian rendering. Every pair uses the same diagram source. **Left** is this plugin with its factory defaults (ELK
 layout, Clean Light theme, card). **Right** is Obsidian's own Mermaid rendering. Both sides are
 displayed at the same width; the plugin auto-fits while Obsidian pins flowcharts to the
 reading-column width, so absolute pixel size is not part of the claim.
@@ -106,7 +112,6 @@ Directives must be the first lines of the block and are stripped before renderin
 ````markdown
 ```mermaid
 %% cm:theme=neutral %%
-%% cm:layout=dagre %%
 flowchart LR
   A --> B
 ```
@@ -115,14 +120,14 @@ flowchart LR
 | Directive | Effect |
 | --- | --- |
 | `%% cm:theme=<id> %%` | Use a built-in or custom theme for this diagram only |
-| `%% cm:layout=elk\|dagre %%` | Override the layout engine for this diagram only |
-| `%% cm:plain %%` | Render this diagram with mermaid's stock look (no card, no toolbar) |
+| `%% cm:layout=elk\|dagre %%` | Legacy compatibility: recognised, stripped and ignored |
+| `%% cm:plain %%` | Render this diagram with the host Pele look (no card, no toolbar) |
 
-Your own `%%{init: ...}%%` directive always wins over what the plugin injects.
+Source `%%{init: ...}%%` directives and frontmatter configuration take priority over plugin defaults
+where Pele supports them. Compatible theme colours are also converted by the plugin.
 
-Decision nodes (`A{...}`) are drawn as a diamond sized to their label rather than mermaid's default
-**square**. Switch *Settings → Rendering → Decision node shape* back to "mermaid square" if you want
-the stock geometry; `%% cm:plain %%` blocks always use it.
+Decision nodes use Pele’s native geometry. Old layout, ELK and decision-shape settings stay in saved
+data for rollback, but have no effect in this branch.
 
 ## Settings
 
@@ -130,9 +135,9 @@ the stock geometry; `%% cm:plain %%` blocks always use it.
 | --- | --- |
 | *(no heading, at the top)* | Plugin interface language (card toolbar, `⋯` menu, error card, viewer, notices): follow Obsidian automatically, 中文 or English |
 | Appearance | Light/dark theme, follow Obsidian appearance, fixed theme |
-| Layout | Layout engine (ELK/Dagre), ELK `mergeEdges`, ELK `nodePlacementStrategy`, auto-fit mode, max upscale, max height |
+| Layout | Native Pele layout, auto-fit mode, max upscale, max height |
 | Interaction | Ctrl/Cmd + scroll zoom, drag to pan, toolbar visibility, double-click action (open expanded / reset zoom / do nothing) |
-| Rendering | Enable Clean Mermaid rendering, render as image, `%% cm: %%` directives, decision node shape (compact diamond / mermaid square) |
+| Rendering | Enable Clean Mermaid rendering, render as image, `%% cm: %%` directives |
 | Export | PNG resolution (1×/2×/3×), PNG background (theme/transparent) |
 | Custom themes | Add, edit (JSON), delete; invalid JSON is rejected and the last valid version stays |
 
@@ -140,13 +145,14 @@ the stock geometry; `%% cm:plain %%` blocks always use it.
 
 - **One mermaid renderer only.** Enable **one** plugin that takes over ` ```mermaid ` blocks.
   If another renderer is detected, Clean Mermaid shows a one-time notice.
-- **Scope of the layout engine.** ELK affects diagrams with pluggable layouts (flowchart, state,
-  class, ER, …). Sequence, pie, gantt and similar diagrams use their own layout and are unaffected.
+- **Syntax differences.** Pele supports Mermaid syntax through its own parser and layout. Some HTML
+  labels, external diagram plugins and renderer-specific options differ. Math is rendered as SVG paths.
 - **Desktop only.** Obsidian mobile does not load the plugin; exports always use the browser
   download.
-- **Obsidian version.** Requires Obsidian 1.14.4 or newer.
-- **Bundled renderer.** The plugin ships its own renderer, so it does not depend on the Mermaid
-  version bundled with Obsidian; that makes `main.js` larger than a typical plugin (a few MB).
+- **Obsidian version.** Requires Obsidian 1.15 or newer; the prototype was checked against its Pele 1.8.0 runtime
+  in a browser harness. Desktop interaction acceptance remains separate.
+- **Host runtime.** Pele updates with Obsidian, so the same plugin version can change rendering after
+  an app update. The plugin bundles an independent SVG math renderer to preserve image/export output.
 - **Disabling** the plugin restores Obsidian's own Mermaid rendering and leaves nothing behind.
 
 ## Contributing
@@ -158,7 +164,7 @@ acceptance checklist.
 
 [MIT](LICENSE) © Clean Mermaid contributors
 
-`main.js` bundles mermaid and its dependencies — their licences are listed in
+The bundled math renderer and theme-configuration parsers are documented in
 [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
 ---

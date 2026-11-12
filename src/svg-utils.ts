@@ -7,6 +7,23 @@
 
 import type { RenderedDiagram } from "./render-engine";
 
+/** 按实际图形边界校正水平中心，保留自然尺寸、留白总量和布局，不裁切连线。 */
+export function centerSvgHorizontally(svg: SVGSVGElement): void {
+	const host = document.createElement("div");
+	host.style.cssText = "position:absolute;visibility:hidden;width:0;height:0;overflow:hidden;pointer-events:none";
+	host.appendChild(svg);
+	document.body.appendChild(host);
+	try {
+		const view = svg.viewBox.baseVal;
+		const box = svg.getBBox();
+		if (!(box.width > 0 && view.width > 0) || box.width > view.width) return;
+		const offset = box.x + box.width / 2 - view.x - view.width / 2;
+		if (Number.isFinite(offset) && Math.abs(offset) > 1) {
+			svg.setAttribute("viewBox", `${view.x + offset} ${view.y} ${view.width} ${view.height}`);
+		}
+	} finally { host.remove(); }
+}
+
 /** 把 SVG 变成 `data:` URL —— 卡片走 `<img>` 展示与 PNG 导出都靠它。 */
 export function svgToDataUrl(svg: string): string {
 	return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

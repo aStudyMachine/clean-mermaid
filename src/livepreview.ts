@@ -96,13 +96,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			}
 
 			private ensureCard(widget: HTMLElement): void {
-				// Obsidian 渲染 mermaid 图之前会先让用户信任该 vault
-				// （local storage 里的 `mermaid-vault-trust`）。这道闸门保持原样：两种形态下
-				// 都不要绕过它去渲染。
-				if (!this.isVaultTrusted() || widget.querySelector(".mermaid-wrapper.is-guarded")) {
-					this.releaseWidget(widget);
-					return;
-				}
+				// 1.15 的 Pele 已移除 vault 信任开关；不能再拿旧 storage 键阻断接管。
 
 				if (!plugin.settings.enableRendering) {
 					this.releaseWidget(widget);
@@ -131,15 +125,6 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 				this.managed.set(widget, { source, block });
 				block.load();
 				this.hideCoreOutput(widget);
-			}
-
-			/** 照搬 Obsidian 自己的判断（`true === loadLocalStorage("mermaid-vault-trust")`）。 */
-			private isVaultTrusted(): boolean {
-				try {
-					return plugin.app.loadLocalStorage("mermaid-vault-trust") === true;
-				} catch {
-					return true;
-				}
 			}
 
 			private releaseWidget(widget: HTMLElement): void {

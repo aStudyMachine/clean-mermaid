@@ -1,5 +1,26 @@
 # Third-party licenses
 
+## Pele prototype production bundle
+
+The production renderer is supplied by Obsidian (`window.pele`), not redistributed by this plugin.
+The plugin bundle includes:
+
+| Package | Version | License | Purpose |
+| --- | --- | --- | --- |
+| mathjax-full | 3.2.2 | Apache-2.0 | Standalone SVG math output |
+| mhchemparser | 4.2.1 | Apache-2.0 | TeX chemistry parsing used by MathJax |
+| json5 | 2.2.3 | MIT | Existing init-directive configuration |
+| yaml | 2.9.1 | ISC | Mermaid frontmatter configuration |
+
+Apache-2.0 (MathJax Consortium; mhchemparser by Martin Hensel), JSON5 and YAML license texts are
+embedded in the distributed `main.js` banner by `esbuild.config.mjs`.
+
+## Historical Mermaid bundle
+
+The following inventory describes the retained baseline renderer. It is not imported by the
+Pele production entry point; dependencies remain available for baseline comparisons.
+
+
 The plugin's `main.js` is a single bundled file: it contains **mermaid 12.1.0** and the 62 runtime
 packages mermaid pulls in, all compiled in. Their licenses are listed here. This plugin's own source
 is [MIT](LICENSE); nothing below is re-licensed by it.

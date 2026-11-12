@@ -1,5 +1,15 @@
 # Obsidian / mermaid 逆向结论（动渲染、主题、接管前必读）
 
+> **Pele 实验分支 / 2026-11-12 补充**：本分支最低 Obsidian 1.15，宿主 Pele 1.8.0。
+> `loadMermaid()` 等待 `/lib/pele.min.js`，随后 `window.pele` 可用；兼容 Mermaid 的
+> `initialize/setConfig` 会改共享配置，插件只用每次调用的 `pele.render` 选项。
+> 旧的 `mermaid-vault-trust` 与守卫已移除，插件不再检查该键。
+> `docViewUpdate` 分发、阅读视图升序排序、实时预览部件和官方 DOM 保留原则仍成立。
+> `scripts/verify-takeover.mjs` 已按 1.15 更新，断言避免依赖压缩变量名。
+> 下文 mermaid 11/12、主题注入和判断节点补丁部分记录的是旧引擎机制，
+> 不再约束当前 Pele 实现；当前状态见 [迁移记录](pele-migration.md)。
+
+
 结论来源：直接检查本机 Obsidian `app.asar`（`%APPDATA%\obsidian\obsidian-<version>.asar`，取**实际运行**的那份，
 见 AGENTS.md「本机运行版本 ≠ 安装目录版本」），按关键词在 asar 内检索并打印命中位置上下文 ——
 接管与 mermaid 配置那几节核对的是 1.14.4，图片灯箱那一节是 1.14.5；**2026-11-01 在 1.14.5 上整体重跑

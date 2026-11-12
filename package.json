@@ -1,7 +1,7 @@
 {
   "name": "clean-mermaid",
   "version": "0.1.10",
-  "description": "Render Mermaid diagrams as clean cards for Obsidian — ELK layout, auto-fit and centering, zoom/pan, image preview, PNG/SVG export, built-in and custom themes.",
+  "description": "Render Mermaid diagrams as clean cards for Obsidian using built-in Pele: auto-fit, zoom/pan, image preview, PNG/SVG export and custom themes.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -12,20 +12,24 @@
     "shots": "node tests/browser/build.mjs capture && node tests/browser/capture-server.mjs",
     "extract-mermaid": "node scripts/extract-obsidian-mermaid.mjs",
     "verify:takeover": "node scripts/verify-takeover.mjs",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "extract-pele": "node scripts/extract-obsidian-pele.mjs"
   },
   "keywords": [
     "obsidian",
     "obsidian-plugin",
     "mermaid",
-    "elk",
     "diagram",
-    "flowchart"
+    "flowchart",
+    "pele"
   ],
   "license": "MIT",
   "dependencies": {
     "@codemirror/view": "6.38.6",
-    "mermaid": "12.1.0"
+    "json5": "2.2.3",
+    "mathjax-full": "3.2.2",
+    "mermaid": "12.1.0",
+    "yaml": "2.9.1"
   },
   "overrides": {
     "katex": "^0.18.2"

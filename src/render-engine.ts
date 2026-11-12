@@ -2,8 +2,7 @@
  * 渲染引擎的契约层：**只放类型与接口，不 import 任何渲染器实现**。
  *
  * 存在的理由：卡片、导出、查看器这些上层只该知道「给我一份 SVG」，不该知道背后是 mermaid
- * 还是别的渲染器。换渲染器（mermaid → Pele，方案见 docs/pele-migration.md）时只需要替换
- * 一个实现文件，上层一行不用改。
+ * 还是别的渲染器。引擎适配、配色与 SVG 自包含化留在实现层；卡片只处理结果与同步/异步时序。
  *
  * 这个文件因此必须保持「无副作用、无运行时依赖」：它会被纯逻辑模块与单测引用。
  */
@@ -45,12 +44,12 @@ export interface RenderedDiagram {
  * 写入落在同一帧 —— await 渲染会让块在 CodeMirror 记下高度之后才变高，从而触发视图重新
  * 测量（滚动时笔记会明显跳动）。
  *
- * 刻意不含「清缓存 / 让字体度量失效」这类方法：现在没有调用方，加进来就是死代码。
- * 换到 Pele 时它需要 `forgetTextWidths()` 才能重测字体，届时有真实调用方再往这里加。
+ * Pele 的冷渲染也同步返回，上层保留同步路径，才能在同次 CodeMirror 测量之前写入卡片。
+ * 外观缓存失效由 renderer.ts 的组合入口统一提供给插件生命周期调用。
  */
 export interface RenderEngine {
 	/** 同步查缓存；没有则返回 `null`，调用方应改用 `render`。 */
 	peek(request: RenderRequest): RenderedDiagram | null;
 	/** 渲染（命中缓存时立即返回）。 */
-	render(request: RenderRequest): Promise<RenderedDiagram>;
+	render(request: RenderRequest): RenderedDiagram | Promise<RenderedDiagram>;
 }

@@ -1,7 +1,7 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, setIcon, setTooltip } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import { clamp, computeFit, MAX_SCALE, MIN_SCALE } from "./fit";
-import { peekRendered, renderDiagram, type RenderRequest, type RenderedDiagram } from "./renderer";
+import { peekRendered, peleRevision, renderDiagram, type RenderRequest, type RenderedDiagram } from "./renderer";
 import { svgToDataUrl } from "./svg-utils";
 import { resolveActiveTheme, themeCanvasColor, themeIdentity, type ThemeDefinition } from "./themes";
 import {
@@ -87,6 +87,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			settings.imageify ? "img" : "svg",
 			isDark ? "dark" : "light",
 			this.plugin.language,
+			peleRevision(),
 		].join("|");
 
 		if (!force && this.rendered && signature === this.signature) {
@@ -119,7 +120,9 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		}
 
 		try {
-			const rendered = await renderDiagram(request);
+			const result = renderDiagram(request);
+			// Pele 冷渲染也是同步的；只给旧的异步实现保留 await 分支。
+			const rendered = result instanceof Promise ? await result : result;
 			if (token !== this.token || !this.containerEl.isConnected) {
 				return;
 			}
@@ -601,8 +604,8 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		card.createDiv({
 			cls: "cm-error-hint",
 			text: this.plugin.t(
-				"Tip: add %% cm:layout=dagre %% at the top of the block to fall back to the classic layout engine.",
-				"提示：在代码块开头加上 %% cm:layout=dagre %% 可回退到经典布局引擎。",
+				"Check the source syntax and features supported by your Obsidian version. Pele uses its own layout.",
+				"请检查源码语法及当前 Obsidian 版本支持的功能；Pele 使用自己的布局。",
 			),
 		});
 		const details = card.createEl("details", { cls: "cm-error-details" });

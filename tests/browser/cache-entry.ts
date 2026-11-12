@@ -1,4 +1,5 @@
 import { renderDiagram } from "../../src/renderer";
+import { initializeHostFixture } from "./host-fixture";
 import { themeIdentity } from "../../src/themes";
 
 const FLOW = `flowchart TD
@@ -38,14 +39,15 @@ async function req(theme: AnyTheme, plain = false) {
 const results: Record<string, unknown>[] = [];
 
 async function main(): Promise<void> {
+	initializeHostFixture();
 	// 1. 修改已有自定义主题的配色（id 不变）必须产出新的 SVG。
 	const first = await req(custom("#111111"));
 	const edited = await req(custom("#ff0000"));
 	results.push({
 		check: "theme edit re-renders (id unchanged)",
-		firstUsedOldColor: first.svg.includes("#111111"),
-		editedUsesNewColor: edited.svg.includes("#ff0000"),
-		editedDroppedOldColor: !edited.svg.includes("#111111"),
+		firstUsedOldColor: first.svg.includes("rgb(17, 17, 17)"),
+		editedUsesNewColor: edited.svg.includes("rgb(255, 0, 0)"),
+		editedDroppedOldColor: !edited.svg.includes("rgb(17, 17, 17)"),
 	});
 
 	// 2. 缓存没有退化：完全相同的请求直接从缓存返回。
@@ -80,7 +82,7 @@ async function main(): Promise<void> {
 	const other = await req({ ...custom("#00ff00"), id: "other-custom" });
 	results.push({
 		check: "different ids are independent",
-		otherColorApplied: other.svg.includes("#00ff00"),
+		otherColorApplied: other.svg.includes("rgb(0, 255, 0)"),
 		stillDistinct: other !== edited,
 	});
 }

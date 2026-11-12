@@ -1,290 +1,128 @@
 import { BUILTIN_THEMES } from "../../src/themes";
-import { renderDiagram } from "../../src/renderer";
+import { renderDiagram, invalidatePele } from "../../src/renderer";
+import { initializeHostFixture } from "./host-fixture";
+import type { RenderRequest, RenderedDiagram } from "../../src/render-engine";
 
 const FLOW = `flowchart TD
-  A[开始] --> B{判断条件}
-  B -->|是| C[处理数据]
-  B -->|否| D[结束流程]
-  C --> D`;
+  subgraph 业务处理
+    A[开始：中文与很长的节点说明] --> B{判断条件是否满足}
+    B -->|是| C[处理数据]
+    B -->|否| D[结束流程]
+    C --> D
+  end`;
+const fixtures = {
+  flowchart: FLOW,
+  sequence: `sequenceDiagram
+participant A as 用户
+participant B as 服务
+A->>B: 提交订单
+alt 支付成功
+B-->>A: 完成
+else 失败
+B-->>A: 重试
+end`,
+  state: `stateDiagram-v2
+[*] --> Pending
+Pending --> Paid: 支付
+Pending --> Cancelled: 取消
+Paid --> [*]`,
+  er: `erDiagram
+CUSTOMER ||--o{ ORDER : places
+ORDER {
+ int id PK
+ string status
+}`,
+  math: String.raw`flowchart LR
+ A["$$E=mc^2$$"] --> B["$$\frac{a+b}{c}$$"]`,
+};
+const results: Record<string, unknown>[] = [];
+const state = window as unknown as Record<string, unknown>;
+state.__cmResults = results;
+const request = (code: string, theme = BUILTIN_THEMES[0]): RenderRequest => ({ code, theme, layout: "elk", elkMergeEdges: "default", elkNodePlacement: "default", decisionShape: "compact", plain: false });
+const check = (name: string, passed: boolean, detail?: unknown): void => { results.push({ check: name, passed, detail }); };
 
-const results: unknown[] = [];
-(window as unknown as Record<string, unknown>).__cmResults = results;
-
-/**
- * 量出判断节点菱形的包围盒。
- *
- * 定位靠 `polygon.label-container`（mermaid 的 `insertPolygonShape` 给所有多边形节点打的类）——
- * 不能直接取第一个 polygon，箭头标记本身就是个三点 polygon。
- *
- * 这是「紧凑菱形补丁真的打在 mermaid 渲染时读的那份形状表上」的唯一硬证据：
- * 补丁静默失效时图照样出得来，只是菱形仍是正方形，肉眼在缩略图里很容易看漏。
- */
-function decisionPolygonBox(svg: string): { width: number; height: number } | null {
-	const polygon = new DOMParser()
-		.parseFromString(svg, "image/svg+xml")
-		.querySelector("polygon.label-container");
-	const raw = polygon?.getAttribute("points")?.trim();
-	if (!raw) {
-		return null;
-	}
-	const points = raw.split(/\s+/).map((pair) => pair.split(",").map(Number));
-	if (points.length !== 4 || points.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y))) {
-		return null;
-	}
-	const xs = points.map(([x]) => x);
-	const ys = points.map(([, y]) => y);
-	return {
-		width: Math.max(...xs) - Math.min(...xs),
-		height: Math.max(...ys) - Math.min(...ys),
-	};
+async function image(svg: string): Promise<HTMLImageElement> {
+ const img = new Image();
+ img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+ await img.decode();
+ return img;
 }
-
 async function main(): Promise<void> {
-	const out = document.getElementById("out")!;
-
-	for (const theme of BUILTIN_THEMES) {
-		for (const layout of ["elk", "dagre"] as const) {
-			try {
-				const rendered = await renderDiagram({
-					code: FLOW,
-					theme,
-					layout,
-					elkMergeEdges: "default",
-					elkNodePlacement: "default",
-					decisionShape: "compact",
-					plain: false,
-				});
-				results.push({
-					theme: theme.id,
-					layout,
-					width: Math.round(rendered.width),
-					height: Math.round(rendered.height),
-					hasThemeColor: rendered.svg.includes(String(theme.variables.primaryColor)),
-					svgBytes: rendered.svg.length,
-				});
-
-				if (layout === "elk") {
-					const box = document.createElement("div");
-					box.style.background = String(theme.variables.background);
-					box.style.padding = "16px";
-					box.style.margin = "16px 0";
-					box.style.border = "1px solid #ccc";
-					box.style.display = "flex";
-					box.style.justifyContent = "center";
-					const img = document.createElement("img");
-					img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(rendered.svg)}`;
-					img.style.width = "520px";
-					box.appendChild(img);
-					out.appendChild(box);
-				}
-			} catch (error) {
-				results.push({ theme: theme.id, layout, error: error instanceof Error ? error.message : String(error) });
-			}
-		}
-	}
-
-	// 校验用户手写的 init 指令仍优先于我们的（mainBkg 决定节点填充色）。
-	try {
-		const overridden = await renderDiagram({
-			code: `%%{init: {"themeVariables": {"mainBkg": "#ff0000"}}}%%\n${FLOW}`,
-			theme: BUILTIN_THEMES[0],
-			layout: "elk",
-			elkMergeEdges: "default",
-			elkNodePlacement: "default",
-			decisionShape: "compact",
-			plain: false,
-		});
-		results.push({
-			check: "user directive wins",
-			userOverrideApplied: overridden.svg.includes("#ff0000"),
-			pluginLineColorKept: overridden.svg.includes("#a1a1aa"),
-			pluginMainBkgReplaced: !overridden.svg.includes("#f1effc"),
-		});
-	} catch (error) {
-		results.push({ check: "user directive wins", error: error instanceof Error ? error.message : String(error) });
-	}
-
-	// 校验 plain 模式可渲染，且判断节点在 plain 下仍是 mermaid 内置的正方形菱形
-	// （plain 的定义就是「Obsidian 默认会显示的样子」，几何也算样子的一部分）。
-	try {
-		const plain = await renderDiagram({
-			code: FLOW,
-			theme: null,
-			layout: "dagre",
-			elkMergeEdges: "default",
-			elkNodePlacement: "default",
-			decisionShape: "compact",
-			plain: true,
-		});
-		const box = decisionPolygonBox(plain.svg);
-		results.push({
-			check: "plain mode",
-			width: Math.round(plain.width),
-			height: Math.round(plain.height),
-			plainKeepsSquareDiamond: !!box && Math.abs(box.width - box.height) < 1,
-		});
-	} catch (error) {
-		results.push({ check: "plain mode", error: error instanceof Error ? error.message : String(error) });
-	}
-
-	// 判断节点几何：设置项「紧凑」下是扁菱形，「原生」下退回 mermaid 内置的正方形。
-	try {
-		const compact = await renderDiagram({
-			code: FLOW,
-			theme: BUILTIN_THEMES[0],
-			layout: "elk",
-			elkMergeEdges: "default",
-			elkNodePlacement: "default",
-			decisionShape: "compact",
-			plain: false,
-		});
-		const box = decisionPolygonBox(compact.svg);
-		results.push({
-			check: "compact decision shape",
-			aspect: box ? Number((box.width / box.height).toFixed(3)) : null,
-			size: box ? `${Math.round(box.width)}x${Math.round(box.height)}` : null,
-			isFlatDiamond: !!box && box.width > box.height,
-			// 等比贴字 + 宽高比夹在 2–4：验证页里的量法与纯模块同一套判据。
-			withinAspectBand: !!box && box.width / box.height >= 1.99 && box.width / box.height <= 4.01,
-		});
-
-		// 长标签：wrappingWidth 折行后文字框变宽，这里量的是宽高比上限有没有夹住。
-		const long = await renderDiagram({
-			code: "flowchart TD\n  A{这个判断条件写得很长以至于它必然会在 wrappingWidth 处折行变成两行}",
-			theme: BUILTIN_THEMES[0],
-			layout: "elk",
-			elkMergeEdges: "default",
-			elkNodePlacement: "default",
-			decisionShape: "compact",
-			plain: false,
-		});
-		const longBox = decisionPolygonBox(long.svg);
-		results.push({
-			check: "long decision label",
-			size: longBox ? `${Math.round(longBox.width)}x${Math.round(longBox.height)}` : null,
-			aspect: longBox ? Number((longBox.width / longBox.height).toFixed(3)) : null,
-			withinAspectBand: !!longBox && longBox.width / longBox.height <= 4.01,
-		});
-
-		// 同一份源码、同一个主题，只有设置项不同 —— 证明几何确实由设置项驱动，而不是缓存串台。
-		const native = await renderDiagram({
-			code: FLOW,
-			theme: BUILTIN_THEMES[0],
-			layout: "elk",
-			elkMergeEdges: "default",
-			elkNodePlacement: "default",
-			decisionShape: "native",
-			plain: false,
-		});
-		const nativeBox = decisionPolygonBox(native.svg);
-		results.push({
-			check: "native decision shape setting",
-			aspect: nativeBox ? Number((nativeBox.width / nativeBox.height).toFixed(3)) : null,
-			isSquareDiamond: !!nativeBox && Math.abs(nativeBox.width - nativeBox.height) < 1,
-		});
-	} catch (error) {
-		results.push({ check: "compact decision shape", error: error instanceof Error ? error.message : String(error) });
-	}
-
-	// 共用菱形处理器的其它图种会一起变扁（state 的 choice、block 的 ?）—— 记录实际结果供目检。
-	for (const [label, code] of [
-		[
-			"state choice",
-			"stateDiagram-v2\n  [*] --> s1\n  s1 --> c <<choice>>\n  c --> done: 成功\n  c --> s1: 重试\n",
-		],
-		["block question", "block-beta\n  columns 1\n  a[\"输入\"]\n  b?\"判断\"\n  c[\"输出\"]\n  a --> b\n  b --> c\n"],
-	] as const) {
-		try {
-			const rendered = await renderDiagram({
-				code,
-				theme: BUILTIN_THEMES[0],
-				layout: "dagre",
-				elkMergeEdges: "default",
-				elkNodePlacement: "default",
-				decisionShape: "compact",
-				plain: false,
-			});
-			const box = decisionPolygonBox(rendered.svg);
-			results.push({
-				check: label,
-				polygonFound: !!box,
-				aspect: box ? Number((box.width / box.height).toFixed(3)) : null,
-			});
-		} catch (error) {
-			results.push({ check: label, error: error instanceof Error ? error.message : String(error) });
-		}
-	}
-
-	// 校验数学渲染（katex 随 mermaid 传递引入，渲染抛错即此处记录 error）：
-	// mermaid 把 `$$...$$` 交给 katex.renderToString，输出 MathML。升级 katex
-	// 前后都跑这页，用本条判定有没有坏。
-	try {
-		const math = await renderDiagram({
-			code: 'flowchart TD\n  A["能量公式 $$E = m c^2$$"] --> B[结果]',
-			theme: BUILTIN_THEMES[0],
-			layout: "elk",
-			elkMergeEdges: "default",
-			elkNodePlacement: "default",
-			decisionShape: "compact",
-			plain: false,
-		});
-		results.push({
-			check: "katex math",
-			hasMathElement: math.svg.includes("<math"),
-			hasKatexClass: math.svg.includes("katex"),
-			width: Math.round(math.width),
-			height: Math.round(math.height),
-		});
-
-		const mathBox = document.createElement("div");
-		mathBox.style.background = "transparent";
-		mathBox.style.padding = "16px";
-		mathBox.style.margin = "16px 0";
-		mathBox.style.border = "1px dashed #f59e0b";
-		mathBox.style.display = "flex";
-		mathBox.style.justifyContent = "center";
-		const mathImg = document.createElement("img");
-		mathImg.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(math.svg)}`;
-		mathImg.style.width = "520px";
-		mathBox.appendChild(mathImg);
-		out.appendChild(mathBox);
-	} catch (error) {
-		results.push({ check: "katex math", error: error instanceof Error ? error.message : String(error) });
-	}
-
-	// SVG 净化：安全级别为 loose，标签里的 HTML 必须经 mermaid 的 DOMPurify 过滤。
-	// 升级带净化的传递依赖前后都跑这条 —— 带事件处理器的负载不能以可执行属性落进输出。
-	try {
-		const payload = await renderDiagram({
-			code: 'flowchart TD\n  A["<img src=x onerror=window.__cmXss=1>"] --> B[ok]',
-			theme: BUILTIN_THEMES[0],
-			layout: "elk",
-			elkMergeEdges: "default",
-			elkNodePlacement: "default",
-			decisionShape: "compact",
-			plain: false,
-		});
-		const holder = document.createElement("div");
-		holder.innerHTML = payload.svg;
-		document.body.appendChild(holder);
-		await new Promise((resolve) => setTimeout(resolve, 200));
-		results.push({
-			check: "svg sanitization",
-			payloadInOutput: /onerror/i.test(payload.svg),
-			executableAttributeKept: holder.querySelector("[onerror]") !== null,
-			xssExecuted: (window as unknown as Record<string, unknown>).__cmXss === 1,
-		});
-		holder.remove();
-	} catch (error) {
-		results.push({ check: "svg sanitization", error: error instanceof Error ? error.message : String(error) });
-	}
+ initializeHostFixture();
+ await document.fonts.ready;
+ const out = document.getElementById("out")!;
+ // 状态图的长自环标签曾让 Pele 留出大量单侧空白；检查实际内容而非 SVG 元素自身是否居中。
+ for (const code of [
+  "stateDiagram-v2\n A --> B: submit\n B --> B: a long self loop label\n B --> A: cancel",
+  "stateDiagram-v2\n A --> B: submit\n B --> A: cancel",
+ ]) {
+  const rendered = await renderDiagram(request(code));
+  const host = document.createElement("div");
+  host.style.cssText = "position:absolute;visibility:hidden;width:0;height:0;overflow:hidden;pointer-events:none";
+  host.innerHTML = rendered.svg; document.body.appendChild(host);
+  try {
+   const svg = host.querySelector("svg")!;
+   const box = svg.getBBox(), view = svg.viewBox.baseVal;
+   const offset = box.x + box.width / 2 - view.x - view.width / 2;
+   check("state content stays horizontally centred, including long self loops", Math.abs(offset) < 1, { offset });
+   check("state content remains inside the SVG viewport", box.x >= view.x && box.x + box.width <= view.x + view.width);
+  } finally { host.remove(); }
+ }
+ for (const theme of BUILTIN_THEMES) {
+  const section = document.createElement("section");
+  const heading = document.createElement("h2"); heading.textContent = theme.name; section.appendChild(heading);
+  const grid = document.createElement("div"); grid.className = "grid"; section.appendChild(grid); out.appendChild(section);
+  for (const [kind, code] of Object.entries(fixtures)) {
+   try {
+    const result = renderDiagram(request(code, theme));
+    check(`${theme.id}/${kind}: synchronous cold render`, !(result instanceof Promise));
+    const rendered: RenderedDiagram = await result;
+    const img = await image(rendered.svg);
+    check(`${theme.id}/${kind}: standalone SVG image`, img.naturalWidth > 0 && img.naturalHeight > 0, { width: rendered.width, height: rendered.height });
+    const card = document.createElement("figure"); card.style.background = String(theme.variables.background);
+    const caption = document.createElement("figcaption"); caption.textContent = kind; card.append(caption, img); grid.appendChild(card);
+    const canvas = document.createElement("canvas"); canvas.width = Math.ceil(rendered.width); canvas.height = Math.ceil(rendered.height);
+    const ctx = canvas.getContext("2d")!; ctx.drawImage(img, 0, 0);
+    const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    check(`${theme.id}/${kind}: PNG export`, !!png && png.size > 100);
+    if (kind === "math") {
+     const doc = new DOMParser().parseFromString(rendered.svg, "image/svg+xml");
+     check(`${theme.id}: math paths without foreignObject`, !!doc.querySelector("[data-mml-node] path") && !doc.querySelector("foreignObject"));
+    }
+   } catch (error) { check(`${theme.id}/${kind}`, false, String(error)); }
+  }
+ }
+ const overridden = await renderDiagram(request(`%%{init: {themeVariables: {mainBkg: "#ff0000"}}}%%
+${FLOW}`));
+ check("source directive colour overrides plugin theme", overridden.svg.includes("--pele-surface: rgb(255, 0, 0)"));
+ const a = await renderDiagram(request(FLOW));
+ const b = await renderDiagram({ ...request(FLOW), layout: "dagre", decisionShape: "native" });
+ check("legacy layout and shape fields are retained but ignored", a === b);
+ invalidatePele(); const refreshed = await renderDiagram(request(FLOW));
+ check("appearance invalidation drops cache", refreshed !== a);
+ const payload = await renderDiagram(request(`flowchart TD
+A["<img src=x onerror=window.__cmXss=1>"] --> B[ok]`));
+ const doc = new DOMParser().parseFromString(payload.svg, "image/svg+xml");
+ check("HTML labels do not create executable elements", !doc.querySelector("script,img,[onerror],foreignObject"));
+ const hostCss = document.createElement("style");
+ hostCss.textContent = `body,.mermaid { --pele-surface:#224466; --pele-series-1:#123456; --pele-series-2:#654321; --font-mermaid:sans-serif; --pele-font-mono:monospace; --pele-radius:7px; --pele-bold-weight:600; }`;
+ document.head.appendChild(hostCss);
+ try {
+  invalidatePele();
+  const plain = await renderDiagram({ ...request(`%%{init:{themeVariables:{mainBkg:'#ff0000',fontFamily:'serif'}}}%%\n${FLOW}`), plain:true, theme:null });
+  const root = new DOMParser().parseFromString(plain.svg,"image/svg+xml").documentElement as unknown as SVGSVGElement;
+  check("plain source colours and font override host CSS",root.style.getPropertyValue("--pele-surface")==="rgb(255, 0, 0)" && root.style.getPropertyValue("--pele-font")==="serif");
+  const pieCode = `pie\n"A" : 2\n"B" : 3`;
+  const inherited = await renderDiagram({ ...request(pieCode), plain:true, theme:null });
+  check("plain embeds inherited palette and geometry", inherited.svg.includes("--pele-series-1: rgb(18, 52, 86)") && inherited.svg.includes("--pele-radius: 7px") && inherited.svg.includes("--pele-bold-weight: 600"));
+  const pie = await renderDiagram({ ...request(`%%{init:{themeVariables:{pie1:'#ff0000',pie2:'#0000ff'}}}%%\n${pieCode}`), plain:true, theme:null });
+  const img = await image(pie.svg);
+  const canvas=document.createElement("canvas"); canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+  const ctx=canvas.getContext("2d")!;ctx.drawImage(img,0,0);
+  const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;let red=0,blue=0;
+  for(let i=0;i<pixels.length;i+=4){if(pixels[i]===255&&pixels[i+1]===0&&pixels[i+2]===0)red++;if(pixels[i]===0&&pixels[i+1]===0&&pixels[i+2]===255)blue++;}
+  check("source palette survives plain, sanitization and PNG rasterisation",red>100&&blue>100,{red,blue});
+ } finally { hostCss.remove(); invalidatePele(); }
+ const pre = document.createElement("pre"); pre.textContent = JSON.stringify(results, null, 2); out.appendChild(pre);
 }
-
-main()
-	.then(() => {
-		(window as unknown as Record<string, unknown>).__cmDone = true;
-	})
-	.catch((error) => {
-		(window as unknown as Record<string, unknown>).__cmDone = "failed";
-		document.getElementById("out")!.textContent = String(error);
-	});
+main().then(() => { state.__cmDone = true; }).catch((error) => { state.__cmDone = "failed"; state.__cmError = String(error); });

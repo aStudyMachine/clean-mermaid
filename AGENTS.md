@@ -1,7 +1,21 @@
 # AGENTS.md — clean-mermaid 开发约定
 
-Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为卡片式图表（自带 mermaid 12、
-ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG 导出、主题与单图指令）。
+Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为卡片式图表（当前实验版使用宿主 Pele、
+原生布局、自适应居中、缩放平移、图片化预览、PNG/SVG 导出、主题与单图指令）。
+
+
+## 当前实验分支优先约定
+
+本分支已迁移到 Obsidian 1.15+ 内置 Pele，详见 [迁移记录](docs/pele-migration.md)。
+下面涉及“自带 mermaid 12 / ELK / init 注入 / 判断节点形状补丁 / 1.14.4”的事实仅适用于
+保留的旧引擎，不得重新接回生产入口。其他接管、命名、双语、Git 与部署护栏继续生效。
+
+- 运行时通过 `loadMermaid()` 加载后使用 `window.pele`；实现只在 `src/pele-runtime.ts`。
+  上层继续依赖 `renderer.ts` / `render-engine.ts`。不得改宿主共享 Mermaid 配置。
+- 当前使用 Pele 原生布局和形状；保留旧布局/形状数据供回退，不新增假装生效的选项。
+- 自定义主题仍存旧 JSON，内部转换；SVG 必须自带图片/导出所需的颜色和字体。
+- `npm run extract-pele` 提取实际宿主版本供浏览器验证；提取物保持 gitignore，
+  不能把它作为生产依赖。最低版本为 1.15，浏览器验证不等于实际桌面验收。
 
 文档地图（改动前先读对应那份，避免重复劳动）：
 [README.md](README.md) / [README.zh-CN.md](README.zh-CN.md) 特性与用法 ·
@@ -10,7 +24,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 [docs/adr/](docs/adr/) 难反转、后来者会问「为什么这么干」的决策记录 ·
 [docs/obsidian-internals.md](docs/obsidian-internals.md) 动渲染 / 主题 / 接管前必读的逆向结论 ·
 [docs/agent-lessons.md](docs/agent-lessons.md) 跨会话踩坑经验与对策（agent 共识，补录规则见文内） ·
-[docs/pele-migration.md](docs/pele-migration.md) 用 Pele 替换内置 mermaid 的调研与迁移规划（**未动工**，动渲染层前先读） ·
+[docs/pele-migration.md](docs/pele-migration.md) 用 Pele 替换内置 mermaid 的调研与迁移规划（实验已动工，动渲染层前先读） ·
 [CHANGELOG.md](CHANGELOG.md) 版本变更记录（发版时补条目） ·
 [TODO.md](TODO.md) 当前待办（完成即删）
 
