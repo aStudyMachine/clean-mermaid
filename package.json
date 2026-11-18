@@ -1,7 +1,7 @@
 {
   "name": "clean-mermaid",
   "version": "0.1.10",
-  "description": "Render Mermaid diagrams as clean cards for Obsidian using built-in Pele: auto-fit, zoom/pan, image preview, PNG/SVG export and custom themes.",
+  "description": "Render Mermaid diagrams as clean cards for Obsidian with Pele, ELK and Dagre layouts, auto-fit, zoom/pan, image preview, PNG/SVG export and custom themes.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -26,9 +26,12 @@
   "license": "MIT",
   "dependencies": {
     "@codemirror/view": "6.38.6",
+    "@dagrejs/dagre": "1.1.5",
+    "elkjs": "0.9.3",
     "json5": "2.2.3",
     "mathjax-full": "3.2.2",
     "mermaid": "12.1.0",
+    "pele": "1.13.0",
     "yaml": "2.9.1"
   },
   "overrides": {

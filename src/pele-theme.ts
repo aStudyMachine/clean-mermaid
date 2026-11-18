@@ -61,12 +61,17 @@ export function unmappedThemeFields(variables: Record<string, unknown>): string[
 }
 
 /** 与 Pele 的优先级一致：frontmatter 在前，多条 init 按出现顺序覆盖。 */
-export function sourceThemeVariables(source: string): Record<string, unknown> {
-	let variables: Record<string, unknown> = {};
+export function sourcePeleConfig(source: string): {
+	themeVariables: Record<string, unknown>;
+	elk: Record<string, unknown>;
+	layout: unknown;
+} {
+	const result = { themeVariables: {}, elk: {}, layout: undefined as unknown };
 	const add = (config: unknown): void => {
-		if (isPlainObject(config) && isPlainObject(config.themeVariables)) {
-			variables = { ...variables, ...config.themeVariables };
-		}
+		if (!isPlainObject(config)) return;
+		if (isPlainObject(config.themeVariables)) result.themeVariables = { ...result.themeVariables, ...config.themeVariables };
+		if (isPlainObject(config.elk)) result.elk = { ...result.elk, ...config.elk };
+		if ("layout" in config) result.layout = config.layout;
 	};
 	const header = /^\s*---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/.exec(source);
 	if (header) {
@@ -79,5 +84,5 @@ export function sourceThemeVariables(source: string): Record<string, unknown> {
 	for (const match of source.matchAll(/%%\{\s*(?:init|initialize)\s*:\s*([\s\S]*?)\}%%/gi)) {
 		try { add(JSON5.parse(match[1])); } catch { /* 语法错误交给 Pele 统一报告。 */ }
 	}
-	return variables;
+	return result;
 }

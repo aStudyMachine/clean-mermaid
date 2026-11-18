@@ -13,8 +13,7 @@ import type { ThemeDefinition } from "./themes";
 /**
  * 一次渲染请求。
  *
- * 字段是**能力清单**而不是某个引擎的配置：实现方忽略自己没有对应概念的字段即可
- * （例如换到 Pele 后 `layout` / `elk*` / `decisionShape` 都失去着力点，实现里直接不读）。
+ * 字段描述调用者选择的布局与外观；实现方只处理图种支持的选项。
  */
 export interface RenderRequest {
 	/** 源码（已剥掉 `%% cm: %%` 指令）。 */
@@ -44,7 +43,8 @@ export interface RenderedDiagram {
  * 写入落在同一帧 —— await 渲染会让块在 CodeMirror 记下高度之后才变高，从而触发视图重新
  * 测量（滚动时笔记会明显跳动）。
  *
- * Pele 的冷渲染也同步返回，上层保留同步路径，才能在同次 CodeMirror 测量之前写入卡片。
+ * Pele 与 Dagre 的冷渲染同步返回，ELK 的冷渲染异步返回。上层保留同步路径，
+ * 让能够同步返回的结果在同次 CodeMirror 测量之前写入卡片。
  * 外观缓存失效由 renderer.ts 的组合入口统一提供给插件生命周期调用。
  */
 export interface RenderEngine {

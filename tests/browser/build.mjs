@@ -1,4 +1,5 @@
 import esbuild from "esbuild";
+import { pelePatches } from "../../scripts/pele-patches.mjs";
 
 const groups = {
 	verify: [
@@ -22,6 +23,7 @@ for (const [entryPoint, outfile] of entries) {
 	await esbuild.build({
 		entryPoints: [entryPoint],
 		bundle: true,
+		plugins: entryPoint === "tests/browser/capture-native-entry.ts" ? [] : [pelePatches],
 		outfile,
 		format: "iife",
 		platform: "browser",

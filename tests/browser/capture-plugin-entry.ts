@@ -4,7 +4,7 @@ import { CAPTURE_DIAGRAMS, CAPTURE_LANGUAGES } from "./capture-diagrams";
 import { postJson, rasteriseToPng, showError, sizeSvg } from "./capture-shared";
 import { initializeHostFixture } from "./host-fixture";
 
-/** 当前实验分支：宿主 Pele + Clean Light + 明色文档。 */
+/** 当前实验分支：Pele + ELK + Clean Light + 明色文档。 */
 const CLEAN_LIGHT = BUILTIN_THEMES.find((theme) => theme.id === "clean-light") ?? BUILTIN_THEMES[0];
 
 const SIDE = "plugin";

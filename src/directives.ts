@@ -10,7 +10,7 @@ const DIRECTIVE_PATTERN = /^\s*%%\s*cm\s*:\s*(.+?)\s*%%\s*$/;
 
 /**
  * 读取开头的 `%% cm:... %%` 指令，并把它们从源码里剥掉。
- * 支持：`%% cm:theme=<id> %%`、`%% cm:layout=elk|dagre %%`、`%% cm:plain %%`。
+ * 支持：`%% cm:theme=<id> %%`、`%% cm:layout=pele|elk|dagre %%`、`%% cm:plain %%`。
  */
 export function parseBlockDirectives(
 	source: string,
@@ -41,7 +41,7 @@ export function parseBlockDirectives(
 
 		if (key === "theme" && value) {
 			directives.themeId = value;
-		} else if (key === "layout" && (value === "elk" || value === "dagre")) {
+		} else if (key === "layout" && (value === "pele" || value === "elk" || value === "dagre")) {
 			directives.layout = value;
 		} else if (key === "plain") {
 			directives.plain = true;

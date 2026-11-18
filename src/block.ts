@@ -28,7 +28,6 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	private signature = "";
 	private rendered: RenderedDiagram | null = null;
 	private theme: ThemeDefinition | null = null;
-	private plainMode = false;
 
 	private cardEl: HTMLDivElement | null = null;
 	private canvasEl: HTMLDivElement | null = null;
@@ -43,6 +42,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		source: string,
 		_context: MarkdownPostProcessorContext | undefined,
 		plugin: CleanMermaidPlugin,
+		private readonly onAsyncRender?: () => void,
 	) {
 		super(containerEl);
 		this.source = source;
@@ -76,7 +76,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 
 		const plain = !settings.enableRendering || directives.plain === true;
 		const theme = plain ? null : resolveActiveTheme(settings, isDark, directives.themeId);
-		const layout: LayoutEngine = plain ? "dagre" : directives.layout ?? settings.layoutEngine;
+		const layout: LayoutEngine = plain ? "pele" : directives.layout ?? settings.layoutEngine;
 
 		const signature = [
 			plain ? "plain" : themeIdentity(theme),
@@ -97,8 +97,6 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		}
 
 		this.signature = signature;
-		this.theme = theme;
-		this.plainMode = plain;
 
 		const token = ++this.token;
 		const request: RenderRequest = {
@@ -115,18 +113,21 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		// CodeMirror 会围着它重新测量整篇笔记。
 		const cached = peekRendered(request);
 		if (cached) {
-			this.build(cached, plain);
+			this.build(cached, plain, theme);
 			return;
 		}
 
+		let asynchronous = false;
 		try {
 			const result = renderDiagram(request);
-			// Pele 冷渲染也是同步的；只给旧的异步实现保留 await 分支。
+			// Pele / Dagre 和命中缓存时同步构建，ELK 首次布局需等待。
+			asynchronous = result instanceof Promise;
 			const rendered = result instanceof Promise ? await result : result;
 			if (token !== this.token || !this.containerEl.isConnected) {
 				return;
 			}
-			this.build(rendered, plain);
+			this.build(rendered, plain, theme);
+			if (asynchronous) this.onAsyncRender?.();
 		} catch (error) {
 			if (token !== this.token) {
 				return;
@@ -134,11 +135,13 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			console.error("[clean-mermaid] failed to render a diagram", error);
 			this.rendered = null;
 			this.showError(error, code);
+			if (asynchronous) this.onAsyncRender?.();
 		}
 	}
 
-	private build(rendered: RenderedDiagram, plain: boolean): void {
+	private build(rendered: RenderedDiagram, plain: boolean, theme: ThemeDefinition | null): void {
 		this.rendered = rendered;
+		this.theme = theme;
 		if (plain) {
 			this.buildPlainView(rendered);
 		} else {
@@ -604,8 +607,8 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		card.createDiv({
 			cls: "cm-error-hint",
 			text: this.plugin.t(
-				"Check the source syntax and features supported by your Obsidian version. Pele uses its own layout.",
-				"请检查源码语法及当前 Obsidian 版本支持的功能；Pele 使用自己的布局。",
+				"Check the source syntax and features supported by Pele in your Obsidian version.",
+				"请检查源码语法及当前 Obsidian 版本中 Pele 支持的功能。",
 			),
 		});
 		const details = card.createEl("details", { cls: "cm-error-details" });

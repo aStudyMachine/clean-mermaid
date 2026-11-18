@@ -10,9 +10,10 @@ Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为卡
 下面涉及“自带 mermaid 12 / ELK / init 注入 / 判断节点形状补丁 / 1.14.4”的事实仅适用于
 保留的旧引擎，不得重新接回生产入口。其他接管、命名、双语、Git 与部署护栏继续生效。
 
-- 运行时通过 `loadMermaid()` 加载后使用 `window.pele`；实现只在 `src/pele-runtime.ts`。
-  上层继续依赖 `renderer.ts` / `render-engine.ts`。不得改宿主共享 Mermaid 配置。
-- 当前使用 Pele 原生布局和形状；保留旧布局/形状数据供回退，不新增假装生效的选项。
+- `src/pele-runtime.ts` 通过 `loadMermaid()` 使用宿主 `window.pele`。`src/pele-private.ts` 用插件自带的
+  固定版本 Pele 接入 ELK / Dagre 和紧凑菱形。上层走 `renderer.ts` / `render-engine.ts`。
+- 不改宿主共享配置或图种注册表。升级插件自带的 Pele 前，核对 `scripts/pele-patches.mjs` 的两个插入点，
+  重跑浏览器布局和判断节点测试，接管时序见 [迁移记录](docs/pele-migration.md)。
 - 自定义主题仍存旧 JSON，内部转换；SVG 必须自带图片/导出所需的颜色和字体。
 - `npm run extract-pele` 提取实际宿主版本供浏览器验证；提取物保持 gitignore，
   不能把它作为生产依赖。最低版本为 1.15，浏览器验证不等于实际桌面验收。
@@ -94,7 +95,7 @@ Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为卡
   （Failed 等于插件在市场搜不到，见「动手前必知的事实」）。`release.yml` 里的「代码侧守卫」是把
   已知 Error 级规则抄成 grep 的本地兜底，不能替代预览扫描。
 - 提交信息遵循 Conventional Commits；提交与推送等维护者明确要求后再做。
-- CSS 类名与指令保持 `cm-` 命名空间；按图配置走注入指令，全局 mermaid 状态不被改写。
+- CSS 类名与指令保持 `cm-` 命名空间。本段旧 Mermaid 补丁与升级约定只适用于历史基线。
   **唯一例外**：判断节点的菱形几何靠替换插件**自己打包那份** mermaid 的形状表实现
   （`installCompactDecisionShape`），因为几何不在任何配置里、`%%{init}%%` 与 CSS 都够不到
   （依据见 [docs/obsidian-internals.md](docs/obsidian-internals.md)）。Obsidian 官方那份 mermaid 不受影响，
@@ -119,7 +120,7 @@ Obsidian 插件：接管 vault 内所有 ` ```mermaid ` 代码块，渲染为卡
 - `npm test`：vitest 单测，只覆盖无 Obsidian 依赖的纯模块（`directives` / `fit` / `themes` / `i18n`
   / `scripts/resolve-vault`）
 - `npm run test:browser`：构建并托管 `tests/browser/` 的两个真实渲染验证页（主题 × 布局、主题与缓存
-  不变量），升级 mermaid 前必跑
+  不变量），升级 Pele 或布局引擎前必跑
 - `npm run extract-mermaid`（asar 路径可省，默认自动取本机**实际运行**的那份）+ `npm run shots`：
   **维护者本机生成 README 素材用，不属于贡献流程**（不要要求贡献者跑）。前者把 **Obsidian 自带的那份
   mermaid**（1.14.4 为 11.13.0）取到 `tests/browser/obsidian-mermaid.min.js`（已 gitignore），后者构建两个

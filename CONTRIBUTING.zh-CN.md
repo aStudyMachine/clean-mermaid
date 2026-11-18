@@ -4,12 +4,12 @@
 
 感谢参与贡献！请尽量让改动保持在插件既定范围内、行为可预期。
 
-本分支是复用 Obsidian 1.15+ 内置 Pele 的实验原型；当前实现与验证边界见
-[迁移记录](docs/pele-migration.md)。旧 Mermaid 运行时和形状补丁仅保留作基线对比。
+本分支需要 Obsidian 1.15+，并用独立 Pele 实例接入 ELK、Dagre 和紧凑菱形。
+支持的图种和验证范围见 [迁移记录](docs/pele-migration.md)。旧 Mermaid 运行时和形状补丁用于基线对比。
 
 ## 环境要求
 
-- Node.js 18 或更高版本，以及 npm（开发环境为 Node 24 / npm 11）
+- Node.js 20 或更高版本，以及 npm（开发环境为 Node 24 / npm 11）
 - 手动测试需要 Obsidian 桌面端 —— 插件声明 `isDesktopOnly: true`，移动端既不支持也不测
 
 ## 本地准备
@@ -50,10 +50,11 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 | `src/main.ts` | 插件入口：注册 mermaid 代码块处理器（`sortOrder -100`）、实时预览扩展、命令与外观监听 |
 | `src/block.ts` | 单个图表：卡片 DOM、缩放平移状态机、`ResizeObserver`、导出 |
 | `src/directives.ts` | `%% cm: ... %%` 指令解析（纯字符串逻辑，有单测） |
-| `src/decision-shape.ts` (legacy) | 判断节点菱形的几何（纯计算，有单测）—— 取代 mermaid 正方形菱形的紧凑画法 |
+| `src/decision-shape.ts` | 判断节点紧凑菱形的几何计算 |
 | `src/mermaid-shapes.d.ts` | 形状表所在 mermaid 哈希 chunk 的类型声明；升级 mermaid 时刻意让它解析失败 |
 | `src/livepreview.ts` | 实时预览接管（Obsidian 在该视图硬编码渲染 mermaid，因此替换其已渲染部件） |
-| `src/pele-runtime.ts` / `src/pele-theme.ts` / `src/pele-math.ts` | 宿主 Pele 生命周期、同步缓存、独立 SVG 主题与公式路径 |
+| `src/pele-runtime.ts` / `src/pele-theme.ts` / `src/pele-math.ts` | Pele 生命周期、缓存、独立 SVG 主题与公式路径 |
+| `src/pele-private.ts` / `src/pele-layout.ts` | 插件私有 Pele 图种、ELK / Dagre 布局及原生回退 |
 | `src/mermaid-runtime.ts` | 旧 Mermaid 引擎，仅保留作基线比较 |
 | `src/render-engine.ts` | 渲染引擎契约（类型 + `RenderEngine` 接口）。无运行时依赖，纯逻辑模块与单测都可引用 |
 | `src/renderer.ts` | 组合根：决定上层拿到的引擎。换渲染器只需改这里 + 一个实现文件 |
@@ -85,8 +86,8 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 - 会被单测导入的模块不得在运行时 `import` `obsidian` 包：该包只有类型声明（`"main": ""`），离开
   Obsidian 就无法解析。指令解析、自适应计算、主题选择、i18n 这些纯逻辑要放在不依赖它的模块里 ——
   绑定 Obsidian 的是 `block.ts`、`main.ts`、`settings.ts`。
-- 渲染缓存键与卡片 signature 必须覆盖所有会影响 SVG 的输入：主题**内容**（用 `themeIdentity`，不是
-  主题 id）、图表源码、plain 模式和外观修订号；字体或 CSS 变化时清缓存。旧布局/形状字段不改变 SVG。
+- 渲染缓存键与卡片 signature 必须覆盖所有会影响 SVG 的输入，包括主题内容、图表源码、plain 模式、
+  外观修订号、布局、ELK 参数与菱形设置。字体或 CSS 变化时清缓存。同键的并发 ELK 请求共用一次布局。
 - 不要改写全局对象（不替换 `window.mermaid`、不产生全局 `mermaid.initialize` 副作用）；
   按图配置走 Pele 每次调用的选项，源码指令保持优先。
 - 任何提交进仓库的文件里都不得出现本机路径、vault 名称或个人信息。
@@ -111,7 +112,8 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 1. 阅读视图：mermaid 代码块渲染为 Clean Mermaid 卡片（白/深底画布、居中、右上角控件），
    而不是 Obsidian 自带渲染效果。
 2. 实时预览：编辑代码块后能正确重渲染。
-3. 采用 Pele 原生布局和判断节点；旧 `cm:layout` 不影响输出，旧布局/形状设置数据保留。
+3. 用复杂流程图验证 ELK、Dagre、Pele 三种布局。实时预览等待 ELK 冷请求时只显示一张图，
+   卡片出现时滚动位置保持稳定。
 4. 切换 Obsidian 明暗外观后，图表按对应主题重绘；`%% cm:plain %%` 的图、以及固定主题（不跟随明暗）
    下的图同样如此。
 5. 拖动分栏宽度时图表自动缩放并保持居中；极窄分栏不溢出。
@@ -135,8 +137,7 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 12. 禁用插件后恢复 Obsidian 自带的 Mermaid 渲染，无残留 DOM、无控制台报错。
 13. 语言设置：切换后卡片工具条、`⋯` 菜单、错误卡片、展开查看器与各类提示立即换成对应语言，
     命令面板条目名称同样同步更新，无需重载插件。
-14. 判断节点采用 Pele 原生菱形，文字完整、连边贴边；`classDef` 填充与描边生效，
-    不再提供紧凑/正方形切换。
+14. 切换紧凑菱形和 Pele 原生菱形，文字完整，连边贴合节点边界，`classDef` 填充与描边生效。
 15. 发现性：装好插件首次渲染出卡片时弹一次「双击图表即可展开查看」的提示（之后不再弹）；
     还没展开过图表前，悬停卡片可见工具条左侧的「双击图表也能展开」标签（窄分栏下允许截断），展开任意
     一张图后各卡片的标签一并消失；`⤢` 的悬停提示只写「展开图表」，全插件图标按钮只出一个气泡（见下一项）。

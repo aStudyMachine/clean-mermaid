@@ -1,11 +1,13 @@
 # Obsidian / mermaid 逆向结论（动渲染、主题、接管前必读）
 
-> **Pele 实验分支 / 2026-11-12 补充**：本分支最低 Obsidian 1.15，宿主 Pele 1.8.0。
+> **Pele 实验分支**：本分支最低 Obsidian 1.15，已静态核对 Obsidian 1.15.1 / Pele 1.13.0。
 > `loadMermaid()` 等待 `/lib/pele.min.js`，随后 `window.pele` 可用；兼容 Mermaid 的
 > `initialize/setConfig` 会改共享配置，插件只用每次调用的 `pele.render` 选项。
 > 旧的 `mermaid-vault-trust` 与守卫已移除，插件不再检查该键。
 > `docViewUpdate` 分发、阅读视图升序排序、实时预览部件和官方 DOM 保留原则仍成立。
 > `scripts/verify-takeover.mjs` 已按 1.15 更新，断言避免依赖压缩变量名。
+> ELK / Dagre 与紧凑菱形只作用于插件打包的 Pele。实时预览在 ELK 冷请求返回前保留官方输出，
+> 卡片写入时隐藏官方输出并调用 `EditorView.requestMeasure()`。
 > 下文 mermaid 11/12、主题注入和判断节点补丁部分记录的是旧引擎机制，
 > 不再约束当前 Pele 实现；当前状态见 [迁移记录](pele-migration.md)。
 

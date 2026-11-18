@@ -11,7 +11,7 @@ import {
 } from "./themes";
 
 export type FitMode = "width" | "viewport" | "raw";
-export type LayoutEngine = "elk" | "dagre";
+export type LayoutEngine = "pele" | "elk" | "dagre";
 export type ElkMergeEdges = "default" | "on" | "off";
 export type ElkNodePlacement =
 	| "default"
@@ -24,7 +24,7 @@ export type PngBackground = "theme" | "transparent";
 export type ToolbarMode = "hover" | "always";
 /** 双击图表做什么：展开查看（默认）、复位缩放，或不做任何响应。 */
 export type DoubleClickAction = "viewer" | "reset" | "off";
-/** 判断节点（`{}`）菱形的画法：贴着文字量的扁菱形，或 mermaid 内置的正方形。 */
+/** 判断节点（`{}`）菱形的画法：贴着文字量的扁菱形，或 Pele 原生菱形。 */
 export type DecisionShape = "compact" | "native";
 
 export interface CustomTheme {
@@ -234,7 +234,35 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 				type: "group",
 				heading: t("Layout", "布局"),
 				items: [
-					{ name: t("Pele layout", "Pele 布局"), desc: t("This experimental build uses Pele’s native layout and decision shapes. Saved ELK/Dagre and compact-shape settings are retained for reverting.", "本实验版使用 Pele 原生布局和判断节点形状；原有 ELK/Dagre 与紧凑菱形设置仍保留，方便退回原版。") },
+					{
+						name: t("Layout engine", "布局引擎"),
+						desc: t("Choose the layout for flowcharts, state, class, ER, requirement and use case diagrams.",
+							"选择流程图、状态图、类图、ER 图、需求图和用例图的布局引擎。"),
+						control: { type: "dropdown", key: "layoutEngine", options: { pele: "Pele", elk: "ELK", dagre: "Dagre" } },
+					},
+					{
+						name: t("ELK: merge edges", "ELK：合并连线"),
+						desc: t("Controls whether ELK places edges at shared connection points.",
+							"控制 ELK 是否让连线共用连接点。"),
+						control: { type: "dropdown", key: "elkMergeEdges", options: {
+							default: t("ELK default", "ELK 默认"), on: t("Merge", "合并"), off: t("Keep separate", "保持分开"),
+						} },
+					},
+					{
+						name: t("ELK: node placement strategy", "ELK：节点排布策略"),
+						control: { type: "dropdown", key: "elkNodePlacement", options: {
+							default: t("ELK default", "ELK 默认"), NETWORK_SIMPLEX: t("Network simplex", "网络单纯形"),
+							BRANDES_KOEPF: "Brandes–Koepf", LINEAR_SEGMENTS: t("Linear segments", "线性分段"),
+							SIMPLE: t("Simple", "简单"),
+						} },
+					},
+					{
+						name: t("Decision node shape", "判断节点形状"),
+						desc: t("Choose how diamonds in flowcharts fit their labels.", "选择流程图中判断节点的菱形尺寸。"),
+						control: { type: "dropdown", key: "decisionShape", options: {
+							compact: t("Compact diamond", "紧凑菱形"), native: t("Pele diamond", "Pele 菱形"),
+						} },
+					},
 					{
 						name: t("Auto-fit", "自适应方式"),
 						desc: t(
@@ -338,8 +366,8 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 					{
 						name: t("Support %% cm: %% directives", "支持 %% cm: %% 指令"),
 						desc: t(
-							"Allow per-diagram overrides like %% cm:theme=neutral %% and %% cm:plain %% (legacy cm:layout is ignored).",
-							"允许按图覆盖设置，例如 %% cm:theme=neutral %%、%% cm:plain %%（旧 cm:layout 不再生效）。",
+							"Allow per-diagram overrides like %% cm:theme=neutral %%, %% cm:layout=elk %% and %% cm:plain %%.",
+							"允许按图覆盖设置，例如 %% cm:theme=neutral %%、%% cm:layout=elk %%、%% cm:plain %%。",
 						),
 						control: { type: "toggle", key: "enableDirectives" },
 					},

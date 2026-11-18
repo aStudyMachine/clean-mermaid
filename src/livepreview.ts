@@ -121,7 +121,12 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 
 				const host = widget.createDiv({ cls: HOST_CLASS });
 
-				const block = new CleanMermaidBlock(host, source, undefined, plugin);
+				const block = new CleanMermaidBlock(host, source, undefined, plugin, () => {
+					if (this.destroyed || !host.isConnected) return;
+					// ELK 结果到达时立即完成接管，避免官方输出和卡片同时占位一帧。
+					this.hideCoreOutput(widget);
+					this.view.requestMeasure();
+				});
 				this.managed.set(widget, { source, block });
 				block.load();
 				this.hideCoreOutput(widget);

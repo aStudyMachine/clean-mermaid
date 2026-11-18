@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { peleSeries, peleTheme, sourceThemeVariables, unmappedThemeFields } from "../src/pele-theme";
+import { peleSeries, peleTheme, sourcePeleConfig, unmappedThemeFields } from "../src/pele-theme";
 import { BUILTIN_THEMES } from "../src/themes";
 
 describe("Pele theme compatibility", () => {
@@ -31,6 +31,6 @@ describe("Pele theme compatibility", () => {
 	});
 	it("merges frontmatter and multiple JSON5 init directives in source order", () => {
 		const source = `---\nconfig:\n  themeVariables:\n    primaryColor: red\n    lineColor: gray\n---\n%%{init: {themeVariables: {primaryColor: 'blue'}}}%%\n%%{init: {themeVariables: {primaryColor: 'green'}}}%%\nflowchart TD\nA-->B`;
-		expect(sourceThemeVariables(source)).toEqual({ primaryColor: "green", lineColor: "gray" });
+		expect(sourcePeleConfig(source).themeVariables).toEqual({ primaryColor: "green", lineColor: "gray" });
 	});
 });

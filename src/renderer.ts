@@ -4,7 +4,7 @@
  * 上层（卡片 / 导出 / 查看器 / 浏览器验证页）一律从这里拿能力，不直接 import 任何引擎实现，
  * 也不 import `mermaid`。具体引擎与生命周期入口在此集中。
  *
- * 当前实验实现使用宿主 Pele；旧 Mermaid 实现只保留作基线，不进入生产依赖图。
+ * 当前实验实现以 Pele 绘图；旧 Mermaid 实现只保留作基线，不进入生产依赖图。
  */
 
 import { peleEngine } from "./pele-runtime";

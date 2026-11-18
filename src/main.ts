@@ -8,7 +8,7 @@ import { initializePele, invalidatePele } from "./renderer";
 
 /**
  * Clean Mermaid —— 把每个 ```mermaid 代码块渲染成一张干净的卡片：
- * 宿主 Pele 布局、自适应、缩放平移、图片预览、PNG/SVG 导出与主题。
+ * Pele 绘图、自适应、缩放平移、图片预览、PNG/SVG 导出与主题。
  */
 export default class CleanMermaidPlugin extends Plugin {
 	settings: CleanMermaidSettings = structuredClone(DEFAULT_SETTINGS);
@@ -22,7 +22,7 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
-		// 先装好宿主运行时，冷渲染也必须在 docViewUpdate 当帧完成。
+		// 先装好宿主运行时，让 Pele 布局和已有缓存能在 docViewUpdate 当帧完成。
 		await loadMermaid();
 		if (!window.pele) throw new Error("Clean Mermaid requires Obsidian 1.15 or later with Pele");
 		initializePele(window.pele, (svg) => {

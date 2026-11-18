@@ -11,6 +11,7 @@ describe("parseBlockDirectives", () => {
 	it("accepts only elk and dagre for the layout override", () => {
 		expect(parseBlockDirectives("%% cm:layout=elk %%\nflowchart LR", true).directives.layout).toBe("elk");
 		expect(parseBlockDirectives("%% cm:layout=dagre %%\nflowchart LR", true).directives.layout).toBe("dagre");
+		expect(parseBlockDirectives("%% cm:layout=pele %%\nflowchart LR", true).directives.layout).toBe("pele");
 		const bogus = parseBlockDirectives("%% cm:layout=dot %%\nflowchart LR", true);
 		expect(bogus.directives.layout).toBeUndefined();
 		// 这一行仍是指令行，所以不会落到 mermaid 那里。

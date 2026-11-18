@@ -4,13 +4,13 @@
 
 Thanks for helping! Please keep the plugin's scope small and predictable.
 
-This branch prototypes the Pele runtime supplied by Obsidian 1.15+. See the
-[migration record](docs/pele-migration.md) for scope and verification limits. The previous Mermaid
-runtime and shape patch remain only for baseline comparison.
+This branch uses Obsidian 1.15+ and a separate Pele instance for ELK, Dagre and compact diamonds.
+The [migration record](docs/pele-migration.md) covers the supported diagram types and verification.
+The previous Mermaid runtime and shape patch remain available as a baseline.
 
 ## Requirements
 
-- Node.js 18 or newer (developed with Node 24 / npm 11) and npm
+- Node.js 20 or newer (developed with Node 24 / npm 11) and npm
 - Obsidian desktop for manual testing — the plugin declares `isDesktopOnly: true`, so mobile is
   neither supported nor tested
 
@@ -57,10 +57,11 @@ into a committed file.
 | `src/main.ts` | Plugin entry: registers the `mermaid` code block processor (`sortOrder -100`), the live preview extension, commands, appearance listener |
 | `src/block.ts` | One rendered block: card DOM, zoom/pan state machine, `ResizeObserver`, exports |
 | `src/directives.ts` | `%% cm: ... %%` directive parsing (pure string logic, unit-tested) |
-| `src/decision-shape.ts` (legacy) | Decision node diamond geometry (pure math, unit-tested) — the compact diamond that replaces mermaid's square one |
+| `src/decision-shape.ts` | Compact diamond geometry |
 | `src/mermaid-shapes.d.ts` | Ambient types for the hashed mermaid chunk the shape table is imported from; a mermaid upgrade breaks this import on purpose |
 | `src/livepreview.ts` | Live preview takeover (Obsidian hard-codes mermaid rendering there, so the rendered widget is replaced) |
-| `src/pele-runtime.ts` / `src/pele-theme.ts` / `src/pele-math.ts` | Host Pele lifecycle, synchronous cache, standalone SVG themes and math paths |
+| `src/pele-runtime.ts` / `src/pele-theme.ts` / `src/pele-math.ts` | Pele lifecycle, cache, standalone SVG themes and math paths |
+| `src/pele-private.ts` / `src/pele-layout.ts` | Plugin-owned Pele registry, ELK/Dagre layout and native fallback |
 | `src/mermaid-runtime.ts` | Previous Mermaid engine, retained only for baseline comparison |
 | `src/render-engine.ts` | Render-engine contract (types + `RenderEngine` interface). No runtime imports, so pure modules and unit tests can depend on it |
 | `src/renderer.ts` | Composition root: picks the engine the rest of the plugin talks to. Swapping the renderer changes this file plus one implementation |
@@ -94,8 +95,8 @@ into a committed file.
   helpers (directive parsing, fit math, theme resolution, i18n) in modules free of it — `block.ts`,
   `main.ts` and `settings.ts` are the ones bound to Obsidian.
 - The render cache key and the card signature must cover **every** input that changes the SVG —
-  theme *content* (`themeIdentity`, not the theme id), source, plain mode and appearance revision.
-  Invalidate after font/CSS changes. Legacy layout/shape fields do not affect the output.
+  theme content, source, plain mode, appearance revision, layout, ELK options and diamond shape.
+  Invalidate after font/CSS changes. Concurrent ELK requests with the same key share a layout.
 - Do not patch globals (no `window.mermaid` swapping, no global `mermaid.initialize` side effects);
   use Pele’s per-render options and preserve source directives.
 - No local machine paths, vault names or personal data in any committed file.
@@ -123,8 +124,8 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 1. Reading view: ` ```mermaid ` blocks render as Clean Mermaid cards (white/dark canvas, centred,
    corner controls) — not with Obsidian's built-in renderer.
 2. Live preview: editing a block re-renders it correctly.
-3. Native Pele layout and decision shapes are active; legacy `cm:layout` does not change output,
-   and old layout/shape data remains saved.
+3. Changing ELK, Dagre and Pele produces different output on a complex flowchart. Cold ELK rendering
+   in live preview leaves one diagram visible and scrolling remains stable as the card appears.
 4. Switching the Obsidian appearance re-renders diagrams with the matching theme — including
    `%% cm:plain %%` diagrams and ones under a fixed (non-following) theme.
 5. Resizing the pane re-fits the diagram and keeps it centred; a very narrow pane does not overflow.
@@ -157,8 +158,8 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 13. Language setting: switching it re-labels the card toolbar, the `⋯` menu, the error card, the
     expanded viewer and every notice right away, and the command palette entry follows too —
     no plugin reload needed.
-14. Decision nodes use Pele’s native geometry; text fits, edges meet their sides and `classDef`
-    fill/stroke works. No compact/square switch is offered.
+14. With both compact and Pele-native diamonds, text fits, edges meet the node boundary and `classDef`
+    fill and stroke work.
 15. Discoverability: the very first card rendered after installing shows a one-off notice that a
     double-click opens the diagram expanded (it does not repeat); until a diagram has been expanded,
     hovering a card shows the *Double-click the diagram to expand* label left of the toolbar buttons

@@ -2,9 +2,14 @@ import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "node:module";
 import { readFileSync } from "node:fs";
+import { pelePatches } from "./scripts/pele-patches.mjs";
 
 // 发布只有三个产物，完整许可随 main.js 一起到达用户的 vault。
 const licenses = [
+	["Pele 1.13.0 — MIT", "node_modules/pele/LICENSE"],
+	["elkjs 0.9.3 — EPL-2.0 — source: https://github.com/kieler/elkjs/releases/tag/0.9.3", "node_modules/elkjs/LICENSE.md"],
+	["Dagre 1.1.5 — MIT", "node_modules/@dagrejs/dagre/LICENSE"],
+	["Graphlib — MIT", "node_modules/@dagrejs/graphlib/LICENSE"],
 	["MathJax 3.2.2 / mhchemparser 4.2.1 — Apache-2.0", "node_modules/mathjax-full/LICENSE"],
 	["JSON5 2.2.3 — MIT", "node_modules/json5/LICENSE.md"],
 	["yaml — ISC", "node_modules/yaml/LICENSE"],
@@ -22,6 +27,7 @@ const context = await esbuild.context({
 	banner: { js: banner },
 	entryPoints: ["src/main.ts"],
 	bundle: true,
+	plugins: [pelePatches],
 	external: [
 		"obsidian",
 		"electron",
