@@ -3,6 +3,7 @@ import { CleanMermaidBlock } from "./block";
 import { markViewerHintAnnounced, viewerHintAnnounced, viewerOpened } from "./hints";
 import { pick, resolveLanguage, type Language } from "./i18n";
 import { createLivePreviewExtension } from "./livepreview";
+import { repairThemeReferences } from "./themes";
 import { CleanMermaidSettingTab, DEFAULT_SETTINGS, migrateSettings, type CleanMermaidSettings } from "./settings";
 
 /**
@@ -18,6 +19,10 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	private readonly blocks = new Set<CleanMermaidBlock>();
 	private commandsRegistered = false;
+	/** 各编辑器视图的重扫入口；只有渲染开关真正切换时才统一通知。 */
+	private readonly livePreviewRescans = new Set<() => void>();
+	/** 当前开着「更多操作」菜单的卡片；同一时刻只允许一个。 */
+	private openMenuCloser: (() => void) | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -53,6 +58,8 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	onunload(): void {
 		this.blocks.clear();
+		this.livePreviewRescans.clear();
+		this.openMenuCloser = null;
 	}
 
 	/** 命令面板条目的标签只在注册时定一次，所以切换语言时要重新注册。 */
@@ -74,6 +81,34 @@ export default class CleanMermaidPlugin extends Plugin {
 
 	unregisterBlock(block: CleanMermaidBlock): void {
 		this.blocks.delete(block);
+	}
+
+	/** 登记一个实时预览实例的重扫入口；返回的注销函数随视图销毁调用。 */
+	registerLivePreviewRescan(rescan: () => void): () => void {
+		this.livePreviewRescans.add(rescan);
+		return () => {
+			this.livePreviewRescans.delete(rescan);
+		};
+	}
+
+	private rescanLivePreview(): void {
+		for (const rescan of this.livePreviewRescans) {
+			rescan();
+		}
+	}
+
+	/** 打开一张卡片的菜单前先关掉上一张，避免同时开着两个。 */
+	claimMenu(closer: () => void): void {
+		if (this.openMenuCloser && this.openMenuCloser !== closer) {
+			this.openMenuCloser();
+		}
+		this.openMenuCloser = closer;
+	}
+
+	releaseMenu(closer: () => void): void {
+		if (this.openMenuCloser === closer) {
+			this.openMenuCloser = null;
+		}
 	}
 
 	isDark(): boolean {
@@ -102,8 +137,8 @@ export default class CleanMermaidPlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const stored = (await this.loadData()) as Partial<CleanMermaidSettings> | null;
 		this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), stored ?? {});
-		if (migrateSettings(this.settings)) {
-			// 早期构建的设置里引用的是旧的内置主题 id —— 把改写结果落盘。
+		// 旧版本写入的主题 id 与已删除的主题都可能在存档里留下悬空引用，统一换回内置默认。
+		if (migrateSettings(this.settings) || repairThemeReferences(this.settings)) {
 			await this.saveSettings();
 		}
 	}
@@ -113,12 +148,19 @@ export default class CleanMermaidPlugin extends Plugin {
 	}
 
 	async updateSettings(patch: Partial<CleanMermaidSettings>): Promise<void> {
+		const renderingToggled =
+			"enableRendering" in patch && patch.enableRendering !== this.settings.enableRendering;
 		Object.assign(this.settings, patch);
 		await this.saveSettings();
 		if ("language" in patch) {
 			this.registerCommands();
 		}
 		this.refreshAll();
+		if (renderingToggled) {
+			// 关闭渲染时实时预览会卸载卡片并清空登记，重新开启后没有块可刷；
+			// 让编辑器实例自己重扫一遍，否则要等下一次滚动或编辑才恢复。
+			this.rescanLivePreview();
+		}
 	}
 
 	/** 重渲染所有图表（设置变更后）。实际没变化时开销很小。 */

@@ -33,12 +33,16 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 		class implements PluginValue {
 			private readonly managed = new Map<HTMLElement, ManagedEntry>();
 			private readonly observer: MutationObserver;
+			private readonly unregisterRescan: () => void;
 			private scheduled = false;
 			private destroyed = false;
 
 			constructor(private readonly view: EditorView) {
 				this.observer = new MutationObserver(() => this.schedule());
 				this.observer.observe(view.dom, { childList: true, subtree: true });
+				// 渲染开关切换后插件层要把这里重扫一遍：关闭时卡片已被卸载，
+				// 重新开启时没有已登记块能触发下一次接管。
+				this.unregisterRescan = plugin.registerLivePreviewRescan(() => this.schedule());
 				this.schedule();
 			}
 
@@ -60,6 +64,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 
 			destroy(): void {
 				this.destroyed = true;
+				this.unregisterRescan();
 				this.observer.disconnect();
 				for (const [widget, entry] of Array.from(this.managed)) {
 					this.dispose(widget, entry);

@@ -9,6 +9,7 @@ import {
 } from "mermaid/dist/chunks/mermaid.core/chunk-XC4XBNZT.mjs";
 import { decisionBox, decisionPoints } from "./decision-shape";
 import type { RenderEngine, RenderRequest, RenderedDiagram } from "./render-engine";
+import { createSerialQueue } from "./serial-queue";
 import { normalizeSvg } from "./svg-utils";
 import { SYSTEM_FONT_STACK, themeIdentity } from "./themes";
 import type { DecisionShape } from "./settings";
@@ -29,7 +30,8 @@ let renderSeq = 0;
  * 1. 设置项没被切成 `native`。值读模块变量而不是 mermaid 配置 —— 实测往 `themeVariables`
  *    或 `flowchart` 段里塞自定义键，渲染期在形状处理器里读回来都是 `undefined`
  *    （mermaid 按 schema 与主题类的键表把未知键剥掉了，同一条指令里的 `primaryColor` 却活得好好的）。
- *    它是全局设置、不随单次渲染变化，所以没有并发竞态。
+ *    它是全局设置，所以「赋值 + 渲染」必须串行（见 renderWithDecisionShape），
+ *    否则不同请求并发时会互相覆盖。
  * 2. 这次渲染用的是插件主题。载体只能用 `theme` 这个**已知**配置键：非 plain 分支恒定写
  *    `"base"`，plain 分支写 `"default"` / `"dark"`，而 `%% cm:plain %%` 的定义是「Obsidian
  *    默认会显示的样子」，正方形菱形也算样子的一部分。
@@ -131,6 +133,26 @@ function reshapeToCompactBox(shapeSvg: ChunkSelection, node: ChunkShapeNode): vo
 	updateNodeBounds(node, polygon);
 	node.calcIntersect = (bounds, point) => intersect_default.polygon(bounds, points, point);
 	node.intersect = (point) => intersect_default.polygon(node, points, point);
+}
+
+const renderQueue = createSerialQueue();
+
+/**
+ * 形状处理器拿不到这次请求的对象，只能靠模块变量递话，所以「赋值 + 渲染」必须
+ * 整段落在队列的同一段里：否则并发请求会互相覆盖，前一个请求的形状处理器可能
+ * 读到后一个请求的配置，结果还会以各自的键写进缓存。
+ */
+function renderWithDecisionShape(shape: DecisionShape, id: string, code: string): Promise<string> {
+	return renderQueue(async () => {
+		decisionShapeSetting = shape;
+		try {
+			const result = await mermaid.render(id, code);
+			return result.svg;
+		} finally {
+			// mermaid 渲染抛错时会留下一个临时节点。
+			document.getElementById(`d${id}`)?.remove();
+		}
+	});
 }
 
 function ensureInitialized(): void {
@@ -275,18 +297,7 @@ export async function renderDiagram(request: RenderRequest): Promise<RenderedDia
 	const key = cacheKey(request);
 	const id = `cm-${++renderSeq}-${Date.now().toString(36)}`;
 	const code = injectInitDirective(request.code, buildInitConfig(request));
-	// 形状处理器拿不到这次请求的对象，只能靠模块变量递话。它是全局设置、对所有块同值，
-	// 所以并发渲染读到的必然是同一个值；cacheKey 里有它，切设置不会命中旧缓存。
-	decisionShapeSetting = request.decisionShape;
-
-	let svg: string;
-	try {
-		const result = await mermaid.render(id, code);
-		svg = result.svg;
-	} finally {
-		// mermaid 渲染抛错时会留下一个临时节点。
-		document.getElementById(`d${id}`)?.remove();
-	}
+	const svg = await renderWithDecisionShape(request.decisionShape, id, code);
 
 	const normalized = normalizeSvg(svg);
 	cache.set(key, normalized);

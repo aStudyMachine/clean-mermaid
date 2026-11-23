@@ -3,6 +3,7 @@ import type { App } from "obsidian";
 import {
 	markViewerHintAnnounced,
 	markViewerOpened,
+	shouldShowViewerHint,
 	viewerHintAnnounced,
 	viewerOpened,
 } from "../src/hints";
@@ -62,5 +63,19 @@ describe("viewer hints", () => {
 		expect(viewerOpened(app)).toBe(false);
 		expect(() => markViewerHintAnnounced(app)).not.toThrow();
 		expect(() => markViewerOpened(app)).not.toThrow();
+	});
+});
+
+describe("shouldShowViewerHint", () => {
+	it("shows only before the first expansion and while double-click opens the viewer", () => {
+		expect(shouldShowViewerHint("viewer", false)).toBe(true);
+		expect(shouldShowViewerHint("viewer", true)).toBe(false);
+	});
+
+	it("never shows once double-click does something else", () => {
+		expect(shouldShowViewerHint("reset", false)).toBe(false);
+		expect(shouldShowViewerHint("off", false)).toBe(false);
+		expect(shouldShowViewerHint("reset", true)).toBe(false);
+		expect(shouldShowViewerHint("off", true)).toBe(false);
 	});
 });

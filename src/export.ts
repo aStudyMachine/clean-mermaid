@@ -168,14 +168,27 @@ export async function copyDiagramPng(
 		);
 	} catch (error) {
 		console.error("[clean-mermaid] copying the image failed", error);
-		new Notice(
-			pick(
-				language,
-				"Clean Mermaid: could not copy the image, copied the SVG source instead",
-				"Clean Mermaid：无法复制图片，已改为复制 SVG 源码",
-			),
-		);
-		await copyText(svgWithXmlHeader(bundle.rendered.svg));
+		try {
+			// 先确认 SVG 文本确实写进剪贴板，再告诉用户「已改为复制源码」；
+			// 两条路都失败时不能留下未处理的 Promise 拒绝。
+			await copyText(svgWithXmlHeader(bundle.rendered.svg));
+			new Notice(
+				pick(
+					language,
+					"Clean Mermaid: could not copy the image, copied the SVG source instead",
+					"Clean Mermaid：无法复制图片，已改为复制 SVG 源码",
+				),
+			);
+		} catch (fallbackError) {
+			console.error("[clean-mermaid] copying the SVG fallback failed", fallbackError);
+			new Notice(
+				pick(
+					language,
+					`Clean Mermaid: could not copy the diagram — ${errorMessage(fallbackError)}`,
+					`Clean Mermaid：无法复制图表 — ${errorMessage(fallbackError)}`,
+				),
+			);
+		}
 	}
 }
 

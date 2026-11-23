@@ -155,6 +155,12 @@ GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间�
   - 令牌类型靠前缀认：`ghu_` = GitHub App user-to-server；`github_pat_` = 细粒度 PAT；`ghp_` = classic。**「响应里没有 `X-OAuth-Scopes` 头」不能用来判定细粒度 PAT** —— App 令牌同样没有这个头，据此推断会得出错原因。
   - **不要 `gh auth login` 重新登录**：那会覆盖现有凭据，可能连带弄坏依赖这个 App 授权的其他工具。
   - 三条出路，按侵入门禁排：① 什么都不改，触发走浏览器（第 5 节）；② 在 `github.com/settings/installations` 找到该 App 安装 → Installation settings → Repository permissions → Actions 设为 Read and write（前提是这个安装归你管；IDE 集成自动装的可能会改不动或被下次同步覆盖）；③ 建一个只含目标仓库、只给 Actions: Read and write 的细粒度 PAT，用 `GH_TOKEN=<pat> gh workflow run ...` 只作用于这一条命令，不动现有登录态。
+- **`HTTP 403: Resource not accessible by personal access token` 是细粒度 PAT 少了具体权限**，与上面那条 App 的文案不同，也**不是 token 失效**：`github_pat_` 的 Contents / Actions 停在 Read 时，`git push`（报 `Permission to <owner>/<repo>.git denied`）与 `gh workflow run`（报这条）会一起失败，同时 `gh auth status` 还会报 “The token … is invalid” —— 那是 gh 去查 classic 的 `X-OAuth-Scopes` 头导致的**误报**，同一次检查里所有读操作都正常就别理它。
+  - 修法：token 设置页把 **Contents** 与 **Actions** 改成 Read and write。**只改权限，不要点 Regenerate** —— 同一串 token 立即生效，本机凭据（GCM / `gh` 的 keyring）都不用动；点了 Regenerate 才会逼你重存。
+  - **不要为了消 403 换成 classic token**：`repo` scope 会覆盖账号下所有私有库，属于权限放大；只改 workflow 文件才需要额外的 `Workflows: Read and write`（classic 对应 `workflow` scope）。
+  - 判断「有没有 Contents 写权限」用无副作用探针：`gh api -X POST repos/<owner>/<repo>/git/refs -f ref=refs/heads/<已存在的分支> -f sha=<该分支当前 sha>` → **422 `Reference already exists` = 有写权限**，`403` = 没有。比「跑一次真操作再回滚」安全，也不用建垃圾分支。
+- **`gh run list` 的表格输出会把 run id 截断**，照抄去 `gh run watch <id>` 会 404。取 id 一律走 `gh run list --workflow <file> --limit 1 --json databaseId,status,conclusion`。
+- **`git push` 走 HTTPS 被拒、但 `ssh -T git@github.com` 能通**时，直接对 URL 推：`git push git@github.com:<owner>/<repo>.git <branch>`（main 同理），不必去改 remote —— 改 remote 是永久配置变更，改完还要记得同步 tracking；推完 `git fetch origin` 把 tracking 拉回来即可。
 
 ## 5. 403 之后：用浏览器触发 workflow
 

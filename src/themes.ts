@@ -192,18 +192,22 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 
 export type ParseVariablesResult =
 	| { ok: true; variables: Record<string, unknown> }
-	| { ok: false; error: string };
+	| { ok: false; reason: "syntax" | "not-object"; detail?: string };
 
-/** 校验用户手改的 themeVariables JSON 字符串。 */
+/** 校验用户手改的 themeVariables JSON 字符串；错误按类别返回，文案由界面层本地化。 */
 export function parseThemeVariables(text: string): ParseVariablesResult {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(text);
 	} catch (error) {
-		return { ok: false, error: error instanceof Error ? error.message : String(error) };
+		return {
+			ok: false,
+			reason: "syntax",
+			detail: error instanceof Error ? error.message : String(error),
+		};
 	}
 	if (!isPlainObject(parsed)) {
-		return { ok: false, error: "The value must be a JSON object, e.g. { \"primaryColor\": \"#f1effc\" }" };
+		return { ok: false, reason: "not-object" };
 	}
 	return { ok: true, variables: parsed };
 }
@@ -228,6 +232,51 @@ export function allThemes(settings: CleanMermaidSettings): ThemeDefinition[] {
 
 export function findTheme(settings: CleanMermaidSettings, id: string): ThemeDefinition | undefined {
 	return allThemes(settings).find((theme) => theme.id === id);
+}
+
+/**
+ * 主题被删除后，把指向它的三个设置项换回内置默认；有改动时返回 true。
+ * 笔记里 `%% cm:theme=<id> %%` 这类单图指令仍按 resolveActiveTheme 的既有回退处理。
+ */
+export function clearThemeReferences(
+	settings: Pick<CleanMermaidSettings, "lightThemeId" | "darkThemeId" | "fixedThemeId">,
+	themeId: string,
+): boolean {
+	let changed = false;
+	if (settings.lightThemeId === themeId) {
+		settings.lightThemeId = CLEAN_LIGHT.id;
+		changed = true;
+	}
+	if (settings.darkThemeId === themeId) {
+		settings.darkThemeId = CLEAN_DARK.id;
+		changed = true;
+	}
+	if (settings.fixedThemeId === themeId) {
+		settings.fixedThemeId = CLEAN_LIGHT.id;
+		changed = true;
+	}
+	return changed;
+}
+
+/**
+ * 把指向不存在主题的设置项换回内置默认（例如主题在旧版本里被删除，设置仍留着它的 id）。
+ * 有改动时返回 true。
+ */
+export function repairThemeReferences(settings: CleanMermaidSettings): boolean {
+	let changed = false;
+	if (!findTheme(settings, settings.lightThemeId)) {
+		settings.lightThemeId = CLEAN_LIGHT.id;
+		changed = true;
+	}
+	if (!findTheme(settings, settings.darkThemeId)) {
+		settings.darkThemeId = CLEAN_DARK.id;
+		changed = true;
+	}
+	if (!findTheme(settings, settings.fixedThemeId)) {
+		settings.fixedThemeId = CLEAN_LIGHT.id;
+		changed = true;
+	}
+	return changed;
 }
 
 /** 用户没有设置单图覆盖时使用的主题。 */

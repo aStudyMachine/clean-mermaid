@@ -63,6 +63,11 @@ export class DiagramViewerModal extends Modal {
 	private ty = 0;
 	/** 本次按下在画布上走过的最大位移，用来把「拖完松手」跟真正的双击区分开。 */
 	private dragDistance = 0;
+	/**
+	 * 上一次按下的位移。双击是两次按下，判定必须看这一对按下的最大位移：
+	 * 只在 pointerdown 里清零会让「拖拽松手 + 紧接着一次点击」的拖拽被第二次按下覆盖掉。
+	 */
+	private previousPressDistance = 0;
 	private resizeState: ResizeState | null = null;
 	/**
 	 * 自适应开关，就是工具条上那颗按钮的两个状态：开启时图始终装进窗口，窗口尺寸一变就重算；
@@ -198,10 +203,14 @@ export class DiagramViewerModal extends Modal {
 				this.dragging = true;
 				this.dragStart = { x: event.clientX, y: event.clientY };
 				this.dragOrigin = { x: this.tx, y: this.ty };
+				this.previousPressDistance = this.dragDistance;
 				this.dragDistance = 0;
 				stage.addClass("cm-grabbing");
 			} else if (this.pointers.size === 2) {
+				// 双指缩放不是点击，别把上一次的位移带进双击判定里。
 				this.dragging = false;
+				this.dragDistance = 0;
+				this.previousPressDistance = 0;
 				this.pinch = { distance: this.pointerDistance(), zoom: this.zoom };
 			}
 		});
@@ -259,7 +268,8 @@ export class DiagramViewerModal extends Modal {
 		stage.addEventListener("dblclick", (event: MouseEvent) => {
 			event.stopPropagation();
 			// 拖拽松手容易连着点出第二次按下，位移超过阈值就不当双击（见 ADR 0003）。
-			if (this.dragDistance > DRAG_CLICK_TOLERANCE) {
+			// 两次按下取最大位移：拖拽发生在前一次按下里，第二次按下的位移可能是 0。
+			if (Math.max(this.dragDistance, this.previousPressDistance) > DRAG_CLICK_TOLERANCE) {
 				return;
 			}
 			this.close();
