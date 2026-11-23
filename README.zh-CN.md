@@ -139,6 +139,10 @@ flowchart LR
 - **自带渲染引擎。** 不依赖 Obsidian 内置的 Mermaid 版本，因此 `main.js` 比一般插件大（数 MB）。
 - **禁用插件**后图表恢复为 Obsidian 自带的 Mermaid 渲染，不会留下任何改动。
 
+## 我的其他插件
+
+我还维护了另一个插件 [**Sub Page**](https://github.com/aStudyMachine/sub-page)：Obsidian 类 Notion嵌套页面，可在侧边栏浏览，也能在笔记内以列表或卡片形式列出子页面。如果你想给笔记加上这种层级结构，可以看看它。它与 Clean Mermaid 相互独立。[社区插件页](https://community.obsidian.md/plugins/sub-page)
+
 ## 参与贡献
 
 协作规范、构建与测试命令、手动验收清单见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。

@@ -149,6 +149,10 @@ the stock geometry; `%% cm:plain %%` blocks always use it.
   version bundled with Obsidian; that makes `main.js` larger than a typical plugin (a few MB).
 - **Disabling** the plugin restores Obsidian's own Mermaid rendering and leaves nothing behind.
 
+## My other plugins
+
+I also maintain another plugin, [**Sub Page**](https://github.com/aStudyMachine/sub-page): Notion-like nested pages for Obsidian — browse them in the sidebar, and list a note's sub-pages as a list or card grid inside the note. If you want to add that kind of hierarchy to your notes, take a look. It is independent of Clean Mermaid. [Community plugin page](https://community.obsidian.md/plugins/sub-page)
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions, build and test commands, and the manual
