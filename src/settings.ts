@@ -4,6 +4,7 @@ import type { LanguageSetting } from "./i18n";
 import {
 	BUILTIN_THEMES,
 	allThemes,
+	clearThemeReferences,
 	findTheme,
 	parseThemeVariables,
 	stringifyThemeVariables,
@@ -514,7 +515,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 						const base = findTheme(this.plugin.settings, this.themeTemplate) ?? BUILTIN_THEMES[0];
 						this.plugin.settings.customThemes.push({
 							id: this.uniqueCustomId(base.id),
-							name: `${base.name} copy`,
+							name: `${base.name} ${t("copy", "副本")}`,
 							dark: base.dark,
 							variables: structuredClone(base.variables),
 						});
@@ -562,6 +563,7 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 					.setTooltip(t("Delete theme", "删除主题"))
 					.onClick(async () => {
 						plugin.settings.customThemes.splice(index, 1);
+						clearThemeReferences(plugin.settings, theme.id);
 						await plugin.saveSettings();
 						this.update();
 						plugin.refreshAll();
@@ -584,12 +586,14 @@ export class CleanMermaidSettingTab extends PluginSettingTab {
 			timer = window.setTimeout(() => {
 				const result = parseThemeVariables(textarea.value);
 				if (!result.ok) {
-					status.setText(
-						`${t(
-							"Invalid JSON — keeping the previous value.",
-							"JSON 非法 — 保留上一版生效值。",
-						)} ${result.error}`,
-					);
+					const message =
+						result.reason === "not-object"
+							? t(
+									"The value must be a JSON object — keeping the previous value.",
+									"值必须是 JSON 对象 — 保留上一版生效值。",
+								)
+							: t("Invalid JSON — keeping the previous value.", "JSON 非法 — 保留上一版生效值。");
+					status.setText(result.detail ? `${message} ${result.detail}` : message);
 					status.addClass("cm-invalid");
 					textarea.addClass("cm-invalid");
 					return;

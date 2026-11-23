@@ -8,6 +8,7 @@
  */
 
 import type { App } from "obsidian";
+import type { DoubleClickAction } from "./settings";
 
 const ANNOUNCED_KEY = "clean-mermaid:viewer-dblclick-announced";
 const OPENED_KEY = "clean-mermaid:viewer-opened";
@@ -40,6 +41,14 @@ export function markViewerHintAnnounced(app: App): void {
 /** 用户是否真的展开过图表；展开过就不再显示「双击展开」的教学标签。 */
 export function viewerOpened(app: App): boolean {
 	return readFlag(app, OPENED_KEY);
+}
+
+/**
+ * 「双击展开」教学标签的显示条件：还没展开过，且双击确实绑在展开上。
+ * 两个条件缺一不可 —— 双击被改成复位或不响应之后，这句话就成了假的（ADR 0002）。
+ */
+export function shouldShowViewerHint(action: DoubleClickAction, opened: boolean): boolean {
+	return action === "viewer" && !opened;
 }
 
 export function markViewerOpened(app: App): void {

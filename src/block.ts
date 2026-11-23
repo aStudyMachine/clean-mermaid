@@ -14,7 +14,16 @@ import {
 import { parseBlockDirectives } from "./directives";
 import type { LayoutEngine } from "./settings";
 import { DiagramViewerModal } from "./viewer";
-import { markViewerOpened, viewerOpened } from "./hints";
+import { markViewerOpened, shouldShowViewerHint, viewerOpened } from "./hints";
+
+/** 重建卡片时要保住的手动视角。 */
+interface ManualView {
+	zoom: number;
+	tx: number;
+	ty: number;
+	width: number;
+	height: number;
+}
 
 /**
  * 一个已渲染的 ```mermaid 块：负责渲染图表、套上卡片，并持有全部交互
@@ -35,6 +44,17 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	private mediaEl: HTMLElement | SVGElement | null = null;
 	private zoomBadgeEl: HTMLDivElement | null = null;
 	private resizeObserver: ResizeObserver | null = null;
+	private menuEl: HTMLDivElement | null = null;
+	/** 上次用来决定适配的输入，用来区分「改适配参数」与「改无关设置」。 */
+	private fitInputs = "";
+	/** 决定渲染几何的因素；只有它变了才该丢掉用户的手动视角。 */
+	private geometrySignature = "";
+
+	/** 关闭菜单的唯一入口：卡片重建后仍指向当前这张菜单。 */
+	private readonly closeMenu = (): void => {
+		this.menuEl?.addClass("cm-hidden");
+		this.plugin.releaseMenu(this.closeMenu);
+	};
 
 	private readonly zoomState = { manual: false, zoom: 1, tx: 0, ty: 0 };
 
@@ -56,11 +76,14 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			this.plugin.warnAboutConflict();
 		}
 		this.plugin.registerBlock(this);
+		// 「点外面关闭」只登记一次：卡片重建会反复创建菜单，但监听不该跟着叠加。
+		this.registerDomEvent(document, "click", () => this.closeMenu());
 		void this.refresh(true);
 	}
 
 	onunload(): void {
 		this.plugin.unregisterBlock(this);
+		this.plugin.releaseMenu(this.closeMenu);
 		this.token++;
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
@@ -78,23 +101,47 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		const theme = plain ? null : resolveActiveTheme(settings, isDark, directives.themeId);
 		const layout: LayoutEngine = plain ? "dagre" : directives.layout ?? settings.layoutEngine;
 
-		const signature = [
-			plain ? "plain" : themeIdentity(theme),
+		// 几何因素与「只影响界面/导出」的因素分开记：换语言、切换图片化都会重建卡片，
+		// 但没必要把用户的缩放/平移丢掉。
+		const geometry = [
+			plain ? `plain:${isDark ? "dark" : "light"}` : themeIdentity(theme),
 			layout,
 			settings.elkMergeEdges,
 			settings.elkNodePlacement,
 			settings.decisionShape,
-			settings.imageify ? "img" : "svg",
-			isDark ? "dark" : "light",
-			this.plugin.language,
 		].join("|");
+		const signature = [geometry, settings.imageify ? "img" : "svg", this.plugin.language].join("|");
+		const fitInputs = `${settings.fitMode}|${settings.maxUpscale}|${settings.maxHeightVh}`;
 
 		if (!force && this.rendered && signature === this.signature) {
 			this.cardEl?.toggleClass("cm-toolbar-always", settings.toolbarMode === "always");
-			this.applyFit();
+			this.syncViewerHint();
+			// 只有真正改变适配输入时才让手动缩放失效；改 PNG 倍率、工具条显示方式
+			// 这类设置不该把图弹回自适应。
+			const fitChanged = fitInputs !== this.fitInputs;
+			this.fitInputs = fitInputs;
+			if (this.zoomState.manual && !fitChanged) {
+				this.applyTransform();
+			} else {
+				this.applyFit();
+			}
 			return;
 		}
 
+		const previous = this.rendered;
+		const preserve: ManualView | null =
+			this.zoomState.manual && previous && geometry === this.geometrySignature
+				? {
+						zoom: this.zoomState.zoom,
+						tx: this.zoomState.tx,
+						ty: this.zoomState.ty,
+						width: previous.width,
+						height: previous.height,
+					}
+				: null;
+
+		this.fitInputs = fitInputs;
+		this.geometrySignature = geometry;
 		this.signature = signature;
 		this.theme = theme;
 		this.plainMode = plain;
@@ -114,7 +161,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		// CodeMirror 会围着它重新测量整篇笔记。
 		const cached = peekRendered(request);
 		if (cached) {
-			this.build(cached, plain);
+			this.build(cached, plain, preserve);
 			return;
 		}
 
@@ -123,7 +170,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			if (token !== this.token || !this.containerEl.isConnected) {
 				return;
 			}
-			this.build(rendered, plain);
+			this.build(rendered, plain, preserve);
 		} catch (error) {
 			if (token !== this.token) {
 				return;
@@ -134,12 +181,12 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		}
 	}
 
-	private build(rendered: RenderedDiagram, plain: boolean): void {
+	private build(rendered: RenderedDiagram, plain: boolean, preserve: ManualView | null): void {
 		this.rendered = rendered;
 		if (plain) {
 			this.buildPlainView(rendered);
 		} else {
-			this.buildCard(rendered);
+			this.buildCard(rendered, preserve);
 		}
 	}
 
@@ -158,9 +205,11 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		this.mediaEl = image;
 	}
 
-	private buildCard(rendered: RenderedDiagram): void {
+	private buildCard(rendered: RenderedDiagram, preserve: ManualView | null): void {
 		const settings = this.plugin.settings;
 		this.containerEl.empty();
+		this.plugin.releaseMenu(this.closeMenu);
+		this.menuEl = null;
 
 		const wrap = this.containerEl.createDiv({ cls: "cm-block" });
 		const card = wrap.createDiv({ cls: "cm-card" });
@@ -176,6 +225,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			const image = canvas.createEl("img", { cls: "cm-media-image" });
 			image.src = svgToDataUrl(rendered.svg);
 			image.draggable = false;
+			this.suppressNativeImageLightbox(image);
 			this.mediaEl = image;
 		} else {
 			const document_ = new DOMParser().parseFromString(rendered.svg, "image/svg+xml");
@@ -192,8 +242,9 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		// 首次渲染出一张卡片时做一次性告知；之后的发现靠工具条上的「双击展开」标签。
 		this.plugin.announceViewerHint();
 		// SVG 自带原始尺寸，所以适配必须在这一步同步做完 —— 先让 CodeMirror 量到原始大小、
-		// 下一帧才改成适配后的大小，笔记就会跳两次。
-		if (!this.applyFit()) {
+		// 下一帧才改成适配后的大小，笔记就会跳两次。重建只是换了界面文案（几何没变）时，
+		// 把用户手动缩放/平移原样放回去。
+		if (!this.restoreManualView(rendered, preserve) && !this.applyFit()) {
 			this.scheduleFit();
 		}
 	}
@@ -202,15 +253,9 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		const plugin = this.plugin;
 		const toolbar = stage.createDiv({ cls: "cm-toolbar" });
 
-		// 「双击展开」的教学标签：只在还没展开过任何图表、且双击确实绑在展开上时渲染。
-		// 两个条件缺一不可 —— 双击被改成复位或不响应之后，这句话就成了假的。
-		// 文案写全整句而不是「双击展开」四个字：这一行就是这两处入口唯一的解释，别让用户自己补主语。
-		if (!viewerOpened(plugin.app) && plugin.settings.doubleClickAction === "viewer") {
-			toolbar.createDiv({
-				cls: "cm-toolbar-hint",
-				text: plugin.t("Double-click the diagram to expand", "双击图表也能展开"),
-			});
-		}
+		// 「双击展开」的教学标签：显示条件与文案统一在 syncViewerHint() 里，
+		// 设置刷新后也走同一处，避免标签与当前双击行为不一致（ADR 0002）。
+		this.syncViewerHint();
 
 		const moreLabel = plugin.t("More actions", "更多操作");
 		const menuButton = toolbar.createEl("button", { cls: "cm-btn" });
@@ -225,6 +270,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 		setIcon(expandButton, "maximize-2");
 
 		const menu = stage.createDiv({ cls: "cm-menu cm-hidden" });
+		this.menuEl = menu;
 		const addItem = (icon: string, label: string, action: () => void | Promise<void>): void => {
 			const item = menu.createEl("button", { cls: "cm-menu-item" });
 			const iconEl = item.createSpan({ cls: "cm-menu-icon" });
@@ -232,7 +278,7 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 			item.createSpan({ text: label });
 			this.registerDomEvent(item, "click", (event) => {
 				event.stopPropagation();
-				this.hideMenu();
+				this.closeMenu();
 				void action();
 			});
 		};
@@ -244,25 +290,68 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 
 		this.registerDomEvent(menuButton, "click", (event) => {
 			event.stopPropagation();
-			menu.toggleClass("cm-hidden", !menu.hasClass("cm-hidden"));
+			if (menu.hasClass("cm-hidden")) {
+				// 打开自己之前先让上一张卡片的菜单关上，同一时刻只留一个。
+				this.plugin.claimMenu(this.closeMenu);
+				menu.removeClass("cm-hidden");
+			} else {
+				this.closeMenu();
+			}
 		});
 		this.registerDomEvent(expandButton, "click", (event) => {
 			event.stopPropagation();
+			this.closeMenu();
 			this.openViewer();
 		});
-		this.registerDomEvent(document, "click", () => this.hideMenu());
 
 		const badge = stage.createDiv({ cls: "cm-zoom-badge cm-hidden" });
 		setTooltip(badge, plugin.t("Reset zoom", "复位缩放"));
 		this.registerDomEvent(badge, "click", (event) => {
 			event.stopPropagation();
+			this.closeMenu();
 			this.resetZoom();
 		});
 		this.zoomBadgeEl = badge;
 	}
 
-	private hideMenu(): void {
-		this.cardEl?.querySelector(".cm-menu")?.addClass("cm-hidden");
+	/**
+	 * 让「双击展开」标签与当前设置、是否已展开过保持一致。
+	 * 创建工具条与设置刷新共用这一处，标签才不会变成谎话（ADR 0002）。
+	 */
+	private syncViewerHint(): void {
+		const toolbar = this.cardEl?.querySelector<HTMLElement>(".cm-toolbar");
+		if (!toolbar) {
+			return;
+		}
+		const existing = toolbar.querySelector<HTMLElement>(".cm-toolbar-hint");
+		if (!shouldShowViewerHint(this.plugin.settings.doubleClickAction, viewerOpened(this.plugin.app))) {
+			existing?.remove();
+			return;
+		}
+		if (existing) {
+			return;
+		}
+		const hint = createDiv({
+			cls: "cm-toolbar-hint",
+			text: this.plugin.t("Double-click the diagram to expand", "双击图表也能展开"),
+		});
+		toolbar.insertBefore(hint, toolbar.firstChild);
+	}
+
+	/** 重建后把用户的手动缩放/平移放回原位；尺寸变了或没量到画布时交给 applyFit。 */
+	private restoreManualView(rendered: RenderedDiagram, preserve: ManualView | null): boolean {
+		if (!preserve || !this.canvasEl?.clientWidth) {
+			return false;
+		}
+		if (rendered.width !== preserve.width || rendered.height !== preserve.height) {
+			return false;
+		}
+		this.zoomState.manual = true;
+		this.zoomState.zoom = preserve.zoom;
+		this.zoomState.tx = preserve.tx;
+		this.zoomState.ty = preserve.ty;
+		this.applyTransform();
+		return true;
 	}
 
 	/**
@@ -289,8 +378,8 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	 * 单击没有任何反应；我们这两种形态（图片化预览、plain 块）都是 `<img>`，必须保持同样静止。
 	 *
 	 * 拦法用 `preventDefault`：官方那段委托处理函数第一句就是 `if (event.defaultPrevented) return`，
-	 * 比只 `stopPropagation` 更稳（不依赖监听的相位）。挂在 `<img>` 的祖先上即可 —— 冒泡先到祖先，
-	 * 再到 `.markdown-preview-sizer`。
+	 * 比只 `stopPropagation` 更稳（不依赖监听的相位）。只挂在 `<img>` 自己身上：内联 SVG 形态
+	 * 不挂，否则 mermaid 节点上的链接会被一并取消。
 	 */
 	private suppressNativeImageLightbox(el: HTMLElement): void {
 		this.registerDomEvent(el, "click", (event: MouseEvent) => event.preventDefault());
@@ -298,7 +387,6 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	}
 
 	private bindInteractions(canvas: HTMLDivElement): void {
-		this.suppressNativeImageLightbox(canvas);
 		this.registerDomEvent(
 			canvas,
 			"wheel",
@@ -587,9 +675,14 @@ export class CleanMermaidBlock extends MarkdownRenderChild {
 	private showError(error: unknown, code: string): void {
 		const message = error instanceof Error ? error.message : String(error);
 		this.containerEl.empty();
+		this.plugin.releaseMenu(this.closeMenu);
+		this.resizeObserver?.disconnect();
+		this.resizeObserver = null;
 		this.cardEl = null;
 		this.canvasEl = null;
 		this.mediaEl = null;
+		this.zoomBadgeEl = null;
+		this.menuEl = null;
 
 		const wrap = this.containerEl.createDiv({ cls: "cm-block" });
 		const card = wrap.createDiv({ cls: "cm-card cm-error" });

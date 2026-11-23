@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
 	BUILTIN_THEMES,
 	allThemes,
+	clearThemeReferences,
 	customToDefinition,
 	findTheme,
 	parseThemeVariables,
+	repairThemeReferences,
 	resolveActiveTheme,
 	stringifyThemeVariables,
 	themeCanvasColor,
@@ -124,11 +126,12 @@ describe("parseThemeVariables", () => {
 		}
 	});
 
-	it("rejects malformed JSON with a message", () => {
+	it("rejects malformed JSON with a syntax reason", () => {
 		const parsed = parseThemeVariables("{ mainBkg: }");
 		expect(parsed.ok).toBe(false);
 		if (!parsed.ok) {
-			expect(parsed.error.length).toBeGreaterThan(0);
+			expect(parsed.reason).toBe("syntax");
+			expect(parsed.detail?.length ?? 0).toBeGreaterThan(0);
 		}
 	});
 
@@ -137,7 +140,7 @@ describe("parseThemeVariables", () => {
 			const parsed = parseThemeVariables(text);
 			expect(parsed.ok).toBe(false);
 			if (!parsed.ok) {
-				expect(parsed.error).toContain("JSON object");
+				expect(parsed.reason).toBe("not-object");
 			}
 		}
 	});
@@ -149,6 +152,55 @@ describe("parseThemeVariables", () => {
 		if (parsed.ok) {
 			expect(parsed.variables).toEqual(variables);
 		}
+	});
+});
+
+describe("clearThemeReferences", () => {
+	it("replaces every reference to the deleted theme with the built-in defaults", () => {
+		const target = settings({
+			lightThemeId: "mine",
+			darkThemeId: "mine",
+			fixedThemeId: "mine",
+		});
+		expect(clearThemeReferences(target, "mine")).toBe(true);
+		expect(target.lightThemeId).toBe("clean-light");
+		expect(target.darkThemeId).toBe("clean-dark");
+		expect(target.fixedThemeId).toBe("clean-light");
+	});
+
+	it("leaves unrelated references alone", () => {
+		const target = settings({ lightThemeId: "neutral", darkThemeId: "clean-dark", fixedThemeId: "neutral" });
+		expect(clearThemeReferences(target, "mine")).toBe(false);
+		expect(target.lightThemeId).toBe("neutral");
+		expect(target.fixedThemeId).toBe("neutral");
+	});
+
+	it("only rewrites the slots that point at the deleted id", () => {
+		const target = settings({ lightThemeId: "mine", darkThemeId: "neutral" });
+		expect(clearThemeReferences(target, "mine")).toBe(true);
+		expect(target.lightThemeId).toBe("clean-light");
+		expect(target.darkThemeId).toBe("neutral");
+	});
+});
+
+describe("repairThemeReferences", () => {
+	it("rewrites dangling ids, including ones left by deleted custom themes", () => {
+		const target = settings({ lightThemeId: "gone", darkThemeId: "gone-dark", fixedThemeId: "gone-fixed" });
+		expect(repairThemeReferences(target)).toBe(true);
+		expect(target.lightThemeId).toBe("clean-light");
+		expect(target.darkThemeId).toBe("clean-dark");
+		expect(target.fixedThemeId).toBe("clean-light");
+	});
+
+	it("keeps valid built-in and custom ids", () => {
+		const target = settings({
+			lightThemeId: "neutral",
+			darkThemeId: "mine",
+			fixedThemeId: "github-light",
+			customThemes: [customToDefinition(custom("mine", "#abcdef", true))],
+		});
+		expect(repairThemeReferences(target)).toBe(false);
+		expect(target.darkThemeId).toBe("mine");
 	});
 });
 
