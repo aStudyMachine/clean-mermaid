@@ -45,6 +45,10 @@
 - **镜像信任门**：官方在编辑视图渲染 mermaid 前会检查 vault 级 localStorage 键 `mermaid-vault-trust`，
   未信任时展示 `div.mermaid-wrapper.is-guarded` + 「允许」按钮。我们两个条件都查，未信任就不接管；
   维护者点「允许」后官方触发重渲染，我们随即接管。
+- **设置变更不会产生编辑器事件**：实时预览的重扫只挂在 `docChanged` / `viewportChanged`、`view.dom`
+  的 `MutationObserver` 与 `docViewUpdate` 上，设置面板保存三者都不命中；关闭渲染时 `ensureCard()`
+  会把卡片卸载、`plugin.blocks` 随之清空，重新开启后没有块能触发下一次接管。因此渲染开关真正变化时，
+  `main.ts` 必须显式通知每个编辑器实例重扫（`registerLivePreviewRescan`），阅读视图仍走 `refreshAll()`。
 
 ## 阅读视图的图片灯箱（`<img>` 单击 / 右键）
 
@@ -63,9 +67,10 @@
 - `belongsToMe(el, sizer, onDetached)` 沿父链往上找，碰到 `.markdown-preview-view` / `.bases-view` 就返回
   `false` —— 所以模态框里的 `<img>`（例如我们查看器的 `.cm-modal-media`）不会被劫持，只有内联在预览
   sizer 里的图会。
-- **让路的口子在处理函数第一句**：`if (event.defaultPrevented) return`。我们因此在 `<img>` 的祖先上
-  preventDefault（`src/block.ts` 的 `suppressNativeImageLightbox()`，click 与 contextmenu 都拦），
-  比 `stopPropagation` 稳，不依赖监听相位。
+- **让路的口子在处理函数第一句**：`if (event.defaultPrevented) return`。我们因此把 `preventDefault`
+  挂在 `<img>` 自己身上（`src/block.ts` 的 `suppressNativeImageLightbox()`，click 与 contextmenu 都拦），
+  比 `stopPropagation` 稳，不依赖监听相位。**不要挂到画布或更上层**：`imageify: false` 时画布内是内联
+  SVG，`<a>` 链接冒泡过去会被一并取消，mermaid 的 `click` 就失效了。
 
 为什么只有本插件会撞上：官方渲染 mermaid 得到的是内联 `<svg>`，不匹配 `img,video` 选择器，单击天然无反应；
 我们的「图片化预览」（`imageify`）与 plain 块都产出 `<img src="data:image/svg+xml,…">`。而 mermaid 的 SVG
@@ -75,7 +80,7 @@
 
 升级复核：若某天单击又开始弹预览，先确认委托选择器仍是 `img,video`、`defaultPrevented` 那道闸还在；
 若监听改到捕获相位，preventDefault 仍有效（它不依赖相位），但改成「只在 `.markdown-preview-sizer` 上
-判断 target」之类的结构时，我们挂在画布上的判断点就要跟着换。
+判断 target」之类的结构时，我们挂在 `<img>` 上的判断点就要跟着换。
 
 ## mermaid 12 的配置语义
 

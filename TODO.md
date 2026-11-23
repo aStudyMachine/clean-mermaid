@@ -2,9 +2,9 @@
 
 滚动删除：完成一项即删一行，不留历史。
 
-1. [ ] **复审长期「不修」项**（0.1.10 复审 Completed、无 Error，只剩下面三条；理由只记在这里，
+1. [ ] **复审长期「不修」项**（0.1.11 复审 Completed、无 Error，只剩下面三条；理由只记在这里，
    别写进 `CHANGELOG.md` 或 Release 说明）：
-   - main.js 超 5 MiB（0.1.10 为 5,370,586 B ≈ 5.12 MiB）：自带 mermaid 12 运行时的必然结果，要压进去只能裁
+   - main.js 超 5 MiB（0.1.11 为 5,373,857 B ≈ 5.12 MiB）：自带 mermaid 12 运行时的必然结果，要压进去只能裁
      图表类型、代价是失去与原生渲染的一致性；
    - `styles.css` 仅剩 2 处 `!important`（`.cm-core-hidden` 与 live-guard 守卫规则）：对抗官方异步追加、
      可能带内联样式的输出，摘掉会官方图与卡片同显；
@@ -19,3 +19,7 @@
    已完成。待办：① 升级 Obsidian 后先跑 `npm run verify:takeover` 复核接管侧清单，Pele 专有项
    （`lib/pele.min.js` 是否启用、渲染入口）仍按文档第 10 节另核；② 第 8 节 6 个决策点需维护者拍板后
    才进阶段 1。
+6. [ ] **渲染层性能（审查结论，未实施）**：实时预览每帧全量 `querySelectorAll` 并逐个查信任、拖拽
+   `pointermove` 里先写样式后读尺寸造成同步 reflow、同一 SVG 在卡片/查看器/导出处重复
+   `encodeURIComponent`、同一源码的并发渲染未合并。改前先测量（DevTools Performance），不按猜测定稿；
+   卡片与查看器两份缩放/平移实现也留到这一步一起收。

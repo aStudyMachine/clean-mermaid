@@ -20,7 +20,9 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   直接调官方渲染器 —— 用处理器 API 在编辑视图**不可能**接管，只能像 `src/livepreview.ts` 那样
   事后替换已渲染部件（隐藏官方输出而非删除，以兼容官方 recycler）。替换必须赶在 CodeMirror 量到该
   部件之前那一帧完成，靠的是内部钩子 `docViewUpdate`；改成 rAF 就慢一帧、滚动时会抖（细节与排障
-  路径见 [docs/obsidian-internals.md](docs/obsidian-internals.md)）。
+  路径见 [docs/obsidian-internals.md](docs/obsidian-internals.md)）。**设置变更不会产生这些重扫时机**：
+  渲染开关真正切换时，`main.ts` 要显式通知每个编辑器实例重扫（`registerLivePreviewRescan`），
+  否则重新开启后要等滚动才恢复。
 - **阅读视图**：官方 mermaid 是普通后处理器；我们在 `main.ts` 用
   `registerMarkdownCodeBlockProcessor("mermaid", …, -100)` 排在它之前接管。
 - **重复注册会抛异常**："同一语言已有代码块处理器"时会抛 `already registered`，`main.ts` 里那段
@@ -63,6 +65,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 
 - 仓库保持无本机路径、无 vault 名、无个人信息；部署脚本只从 `VAULT` 环境变量或命令行参数取路径。
 - 本机路径与版本记在 `.local/.env`（键值对 + `#` 注释；`.local` 整目录被 gitignore 的 `*.local` 覆盖，模板见 `env.example`）；需要 vault 路径、Obsidian 版本或 gh 落点时读它，不要问也不要猜。
+- 审查报告与发版计划/发布说明草稿放 `.agents/plan/`，跨 agent 交接单放 `.agents/handoff/`；这两处与 `.local/` 一样不跟踪（`.agents/*` 忽略，只放开 `.agents/skills/`），提交只含代码、测试与正式文档。
 - 双语文档保持同步：`README.md` ↔ `README.zh-CN.md`、`CONTRIBUTING.md` ↔ `CONTRIBUTING.zh-CN.md`。
 - `CHANGELOG.md` 与 GitHub Release 说明都**面向普通用户**，具体说明与用户相关的功能、修复、行为变化、
   兼容性及必要的使用方式。内部维护记录可以一句概括，不展开实现细节、重构、开发工具、CI / 部署流程、
@@ -87,7 +90,7 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
   设置项「判断节点形状」可整体退回原生正方形，`%% cm:plain %%` 恒用原生。别把它扩大成第二类改写。
 - 用户可见文案统一走 `plugin.t(英文, 中文)`（`src/i18n.ts`），不留硬编码标签；已渲染卡片靠 signature 里的语言字段触发重建来换文案，命令面板条目在语言变更时重新注册。
 - **图标按钮的悬浮提示只走 `setTooltip(el, 文案)`，绝不同时写 `title`**：Obsidian 按 `aria-label`（`setTooltip` 写的就是它）渲染自己的气泡，浏览器又为 `title` 弹一个原生提示，结果同一个按钮上叠着两个气泡。多态按钮（查看器的自适应开关）换文案也只改 `aria-label`。
-- 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `decision-shape.ts` / `fit.ts` / `themes.ts` / `i18n.ts`。
+- 会被单测导入的模块不要在运行时 `import "obsidian"`（该包只有类型声明 `"main": ""`，离开 Obsidian 无法解析）；纯逻辑留在 `directives.ts` / `decision-shape.ts` / `fit.ts` / `themes.ts` / `i18n.ts` / `serial-queue.ts`。
 - **渲染器只在 `mermaid-runtime.ts` 里 import**。上层（`block.ts` / `export.ts` / `viewer.ts` / `tests/browser/*`）一律走
   `renderer.ts`（引擎选择）与 `render-engine.ts`（类型契约）；SVG 字符串的通用处理放 `svg-utils.ts`。
   这是换渲染器（见 [docs/pele-migration.md](docs/pele-migration.md)）能只改一个实现文件的前提，
@@ -102,8 +105,8 @@ ELK 默认布局、自适应居中、缩放平移、图片化预览、PNG/SVG �
 ## 常用命令
 
 - `npm run build`：类型检查（src + tests）+ 生产构建
-- `npm test`：vitest 单测，只覆盖无 Obsidian 依赖的纯模块（`directives` / `fit` / `themes` / `i18n`
-  / `scripts/resolve-vault`）
+- `npm test`：vitest 单测，只覆盖无 Obsidian 依赖的纯模块（`directives` / `decision-shape` / `fit` /
+  `themes` / `i18n` / `hints` / `serial-queue` / `scripts/resolve-vault`）
 - `npm run test:browser`：构建并托管 `tests/browser/` 的两个真实渲染验证页（主题 × 布局、主题与缓存
   不变量），升级 mermaid 前必跑
 - `npm run extract-mermaid`（asar 路径可省，默认自动取本机**实际运行**的那份）+ `npm run shots`：

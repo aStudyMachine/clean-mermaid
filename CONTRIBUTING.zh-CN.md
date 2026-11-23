@@ -54,16 +54,17 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 | `src/mermaid-runtime.ts` | 自带 mermaid 运行时：初始化配置、`%%{init}%%` 指令注入、判断节点形状改写、LRU 缓存。**唯一**直接 import `mermaid` 的文件 |
 | `src/render-engine.ts` | 渲染引擎契约（类型 + `RenderEngine` 接口）。无运行时依赖，纯逻辑模块与单测都可引用 |
 | `src/renderer.ts` | 组合根：决定上层拿到的引擎。换渲染器只需改这里 + 一个实现文件 |
+| `src/serial-queue.ts` | 纯函数串行队列：判断节点形状设置与 `mermaid.render` 不能交错（有单测） |
 | `src/svg-utils.ts` | 与引擎无关的 SVG 处理：`data:` URL 转换、像素尺寸归一化、剥 `max-width` |
 | `src/themes.ts` | 内置主题、自定义主题解析与校验、明暗主题选择 |
 | `src/fit.ts` | 纯函数自适应计算（不依赖 Obsidian，便于单测） |
 | `src/viewer.ts` | 展开查看器（铺满视口、可拖拽调整大小、自适应；缩放、平移、捏合、导出） |
-| `src/hints.ts` | 「双击展开」的一次性教学标记（localStorage），不属设置 |
+| `src/hints.ts` | 「双击展开」的一次性教学标记（localStorage），不属设置；另含纯函数 `shouldShowViewerHint` |
 | `src/export.ts` | PNG 栅格化、SVG 输出、剪贴板 |
 | `src/i18n.ts` | 语言检测（`auto` 跟随 Obsidian）与插件所有界面文案共用的中英取词 |
 | `src/settings.ts` | 设置模型与设置面板（含自定义主题 JSON 编辑器与界面语言选项） |
 | `styles.css` | 全部样式，类名以 `cm-` 命名空间；明暗通过 `body.theme-dark` 区分 |
-| `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`decision-shape.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`scripts/resolve-vault.mjs`） |
+| `tests/` | 纯逻辑模块的 vitest 单测（`directives.ts`、`decision-shape.ts`、`fit.ts`、`themes.ts`、`i18n.ts`、`hints.ts`、`serial-queue.ts`、`scripts/resolve-vault.mjs`） |
 | `tests/browser/` | 真实 mermaid 渲染的浏览器验证脚本（主题 × 布局产出、主题与缓存不变量），以及 README 对比图的捕获链路（`capture-*`、`native-config.ts`）—— 维护者本机的素材工具，不属于贡献流程 |
 | `images/` | README 对比图的 PNG，由上面那条链路生成。中英各一套：中文文档用文件名带 `-zh-` 的，英文文档用带 `-en-` 的；重跑 `npm run shots` 时**两语言必须一起跑**，否则两套图文案会与源码脱节 |
 | `scripts/extract-obsidian-mermaid.mjs` | 从 Obsidian 的 asar 里取出它自带的 mermaid 构建，供 README 对比图的「原生」一侧使用 —— 维护者本机用，见 `AGENTS.md` |
@@ -107,12 +108,14 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 
 1. 阅读视图：mermaid 代码块渲染为 Clean Mermaid 卡片（白/深底画布、居中、右上角控件），
    而不是 Obsidian 自带渲染效果。
-2. 实时预览：编辑代码块后能正确重渲染。
+2. 实时预览：编辑代码块后能正确重渲染。设置里关掉再打开「启用 Clean Mermaid 渲染」后，各窗格里的图
+   立即切换，不需要滚动或编辑。
 3. ELK 生效：复杂流程图与 `%% cm:layout=dagre %%` 的输出可见差异；ELK 设置
    （`mergeEdges`、`nodePlacementStrategy`）能改变渲染结果。
 4. 切换 Obsidian 明暗外观后，图表按对应主题重绘；`%% cm:plain %%` 的图、以及固定主题（不跟随明暗）
    下的图同样如此。
-5. 拖动分栏宽度时图表自动缩放并保持居中；极窄分栏不溢出。
+5. 拖动分栏宽度时图表自动缩放并保持居中；极窄分栏不溢出。手动放大并拖动后，改「PNG 分辨率」
+   「界面语言」或「工具条显示方式」保持当前视角；改「自适应方式」「最大放大倍率」会重新适配。
 6. `Ctrl/Cmd + 滚轮`以指针为中心缩放；普通滚轮照常滚动笔记；拖拽可平移。**双击图表展开查看**，
    且只有双击落在画布上才生效（点在工具条按钮上不会顺手弹窗）；设置里把「双击操作」改成「复位缩放」
    或「不响应」后行为随之改变，不用重载插件。**单击（含右键）图表不产生任何交互** ——
@@ -126,9 +129,11 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
    但按住拖过一段再松手的那次双击不关窗；关闭后不影响内联图表。
 8. `⋯` 菜单：PNG（含背景）、SVG、复制图片、复制源码均可用。把「PNG 背景」改成「透明」后，
    导出的图确实没有底色，但**展开查看器里的画布仍然铺主题色**（预览与导出不再串用同一个设置）。
+   打开另一张卡片的 `⋯` 会先关掉上一张；点空白处或再点同一按钮都会关闭。
 9. `%% cm:theme=neutral %%`、`%% cm:layout=dagre %%`、`%% cm:plain %%` 行为符合文档，
    且指令行不会出现在渲染结果中。
-10. 自定义主题：非法 JSON 被拒绝并保留上一版生效值；合法 JSON 立即生效。
+10. 自定义主题：非法 JSON 被拒绝并保留上一版生效值；合法 JSON 立即生效。删除正在使用的自定义主题后，
+    三个主题下拉都回落到内置默认。
 11. 语法错误时显示错误卡片（含切换 Dagre 的建议），且不影响笔记其它内容。
 12. 禁用插件后恢复 Obsidian 自带的 Mermaid 渲染，无残留 DOM、无控制台报错。
 13. 语言设置：切换后卡片工具条、`⋯` 菜单、错误卡片、展开查看器与各类提示立即换成对应语言，
@@ -140,10 +145,13 @@ gitignore，照 `env.example` 复制一份填写），不要写进任何入库�
 15. 发现性：装好插件首次渲染出卡片时弹一次「双击图表即可展开查看」的提示（之后不再弹）；
     还没展开过图表前，悬停卡片可见工具条左侧的「双击图表也能展开」标签（窄分栏下允许截断），展开任意
     一张图后各卡片的标签一并消失；`⤢` 的悬停提示只写「展开图表」，全插件图标按钮只出一个气泡（见下一项）。
-    把「双击操作」改成非「展开查看」后标签不再出现。
+    把「双击操作」改成非「展开查看」后标签不再出现；改这一项时，已在屏幕上的卡片标签
+    立即更新，无需重载。
 16. 图标按钮悬停只出一个提示气泡：`⋯`、`⤢`、右上角缩放徽标、展开查看器工具条上的每个按钮各验一次；
     出现两个叠在一起的气泡说明该元素同时写了 `aria-label` 和 `title`（Obsidian 按前者渲染，浏览器按后者再弹一个）。
-17. `git status` 与全文检索确认没有本机路径、token 或个人信息进入暂存区。
+17. 内联链接：关掉「图片化渲染」后，带 `click A "https://example.com"` 的节点可以打开链接；卡片
+    放大并拖动后再点一次也要生效（指针捕获不能吞掉点击）。单击与右键仍不得弹出 Obsidian 的图片灯箱。
+18. `git status` 与全文检索确认没有本机路径、token 或个人信息进入暂存区。
 
 ## 反馈问题
 
