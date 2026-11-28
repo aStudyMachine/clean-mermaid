@@ -2,9 +2,9 @@
 
 结论来源：直接检查本机 Obsidian `app.asar`（`%APPDATA%\obsidian\obsidian-<version>.asar`，取**实际运行**的那份，
 见 AGENTS.md「本机运行版本 ≠ 安装目录版本」），按关键词在 asar 内检索并打印命中位置上下文 ——
-接管与 mermaid 配置那几节核对的是 1.14.4，图片灯箱那一节是 1.14.5；**2026-11-01 在 1.14.5 上整体重跑
-`npm run verify:takeover`，24 项全部成立**，本文件因此没有需要改的结论。Obsidian 升级后若接管失效，
-先跑同一条命令（清单与本文一一对应），任一项 FAIL 再按章节重新检索，然后才改代码。
+接管与 Mermaid 配置在 1.14.4 核对，图片灯箱在 1.14.5 核对。1.15.0 和 1.15.1 的共同接管依赖也已用
+`npm run verify:takeover` 核对。脚本按宿主版本检查信任键与内置渲染器。升级后先跑它，若有 FAIL，
+按对应章节重新检索。再按 [手动验收清单](../CONTRIBUTING.zh-CN.md#手动验收清单) 在新库实测。
 
 ## 代码块渲染的三条路径
 
@@ -42,9 +42,14 @@
 - **源码从编辑器状态取**：编辑视图里官方的 `<code>` 元素已被 detach，拿不到文本；`livepreview.ts` 用
   `view.posAtDOM(widget)` 定位，向上找 ```` ```mermaid ```` 围栏、向下找闭合围栏，再从文档里切片取源码，
   并对偏移做边界校验；取不到就放弃接管（保持官方渲染，安全降级）。
-- **镜像信任门**：官方在编辑视图渲染 mermaid 前会检查 vault 级 localStorage 键 `mermaid-vault-trust`，
-  未信任时展示 `div.mermaid-wrapper.is-guarded` + 「允许」按钮。我们两个条件都查，未信任就不接管；
-  维护者点「允许」后官方触发重渲染，我们随即接管。
+- **信任门按宿主版本判断**：Obsidian 1.14.x 渲染前会检查库级键 `mermaid-vault-trust`，未信任时
+  显示 `div.mermaid-wrapper.is-guarded` 和「允许」按钮。实时预览等信任键为 `true` 且提示消失后接管。
+  [Obsidian 1.15](https://obsidian.md/changelog/2026-11-02-desktop-v1.15.0/) 改用 Pele 后移除了信任提示，
+  新建库没有这个键，旧库可能还有旧值。1.15 起接管跳过旧键判断，仍保留宿主实际显示的守卫。
+- **设置变更不会产生编辑器事件**：实时预览的重扫只挂在 `docChanged` / `viewportChanged`、`view.dom`
+  的 `MutationObserver` 与 `docViewUpdate` 上，设置面板保存三者都不命中；关闭渲染时 `ensureCard()`
+  会把卡片卸载、`plugin.blocks` 随之清空，重新开启后没有块能触发下一次接管。因此渲染开关真正变化时，
+  `main.ts` 必须显式通知每个编辑器实例重扫（`registerLivePreviewRescan`），阅读视图仍走 `refreshAll()`。
 
 ## 阅读视图的图片灯箱（`<img>` 单击 / 右键）
 
@@ -63,9 +68,10 @@
 - `belongsToMe(el, sizer, onDetached)` 沿父链往上找，碰到 `.markdown-preview-view` / `.bases-view` 就返回
   `false` —— 所以模态框里的 `<img>`（例如我们查看器的 `.cm-modal-media`）不会被劫持，只有内联在预览
   sizer 里的图会。
-- **让路的口子在处理函数第一句**：`if (event.defaultPrevented) return`。我们因此在 `<img>` 的祖先上
-  preventDefault（`src/block.ts` 的 `suppressNativeImageLightbox()`，click 与 contextmenu 都拦），
-  比 `stopPropagation` 稳，不依赖监听相位。
+- **让路的口子在处理函数第一句**：`if (event.defaultPrevented) return`。`src/block.ts` 的
+  `bindDiagramImage()` 在 `<img>` 上取消 `contextmenu` 默认行为，并调用 `src/main.ts` 的
+  `suppressImagePreview()` 取消 `click` 默认行为。监听留在图片上，内联 SVG 的 Mermaid `click`
+  链接可以正常导航。
 
 为什么只有本插件会撞上：官方渲染 mermaid 得到的是内联 `<svg>`，不匹配 `img,video` 选择器，单击天然无反应；
 我们的「图片化预览」（`imageify`）与 plain 块都产出 `<img src="data:image/svg+xml,…">`。而 mermaid 的 SVG
@@ -73,9 +79,10 @@
 深色说明文字直接消失。同一张图在卡片里被 90% 黑压过之后，节点填充会从 `#ECECFF` 掉到 `#17–#1F` 一带，
 很容易被误读成「浅色配色配了深色底色」（实测 `#ECECFF` → `#171719`）——量像素前先想一下这层遮罩。
 
-升级复核：若某天单击又开始弹预览，先确认委托选择器仍是 `img,video`、`defaultPrevented` 那道闸还在；
-若监听改到捕获相位，preventDefault 仍有效（它不依赖相位），但改成「只在 `.markdown-preview-sizer` 上
-判断 target」之类的结构时，我们挂在画布上的判断点就要跟着换。
+- **Obsidian Image Toolkit 1.4.3** 在 `document` 委托 `click`、`mouseover` 和 `mouseout`，默认处理编辑器里的图片。
+  打开相应选项后也会处理 `.modal-content img`。图库不检查 `defaultPrevented`，单击会把透明 SVG 放进
+  `.oit-img-view`，悬浮时会直接写入 `cursor: zoom-in`。卡片、plain 块和展开查看器的 `<img>` 统一阻止这三种
+  事件冒泡。双击和拖拽继续由 Clean Mermaid 处理。
 
 ## mermaid 12 的配置语义
 
@@ -139,7 +146,9 @@
 
 - 自带 mermaid 实例（而非沿用 Obsidian 的 `window.mermaid`）：ELK 100% 可用、版本自控，代价是
   `main.js` 数 MB。
-- `securityLevel: "loose"`：与官方渲染行为对齐，保留标签里的 HTML 与链接。
+- `securityLevel: "strict"`：插件内置的 Mermaid 对标签和最终 SVG 做净化，阅读视图和实时预览共用。
+  Mermaid 将 `securityLevel` 列为安全配置，块内指令无法覆盖。净化会按 HTML 序列化输出，遇到
+  `<br>` 等 XML 解析不了的标签时，`normalizeSvg()` 改用 HTML 解析，再序列化为可导出的 SVG。
 - `suppressErrorRendering: true`：渲染失败时由我们自己的错误卡片接管，避免官方把错误图塞进 DOM。
 - **判断节点换几何走「包装 `shapes` 里的菱形处理器」，不换源码也不重写处理器**：
   `installCompactDecisionShape()` 先 `await` 原实现（标签测量、`classDef` 着色、主题变量全部照旧），

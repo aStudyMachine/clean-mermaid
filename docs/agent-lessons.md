@@ -82,6 +82,25 @@ byte-for-byte 复现仍要靠 dry-run + 三方 sha256。`release.yml` 另加「�
 （当前基线 = 2）。任何「数违规」的守卫写完**先在本地跑一遍确认拿到期望基线**，再进 CI；
 否则第一条 run 就红，排查成本比省下的时间高。
 
+### gh 的 Actions 写权限会变，先试 CLI 再退浏览器
+
+**教训**：早先一轮 `gh workflow run` 报 `HTTP 403: Resource not accessible by integration`，根因是 gh 挂的
+GitHub App 安装没有 Actions 写权限，流程因此改走浏览器触发。2026-11-23 发 0.1.11 时，同一条命令与
+`gh release edit --notes-file` 直接可用——权限取决于本机当前凭据，会随环境变化，不能把「必须用浏览器」
+当成仓库的固定事实。
+
+**对策**：每次发版先跑一次 `gh workflow run`（失败也无副作用），只有真的 403 才按
+`obsidian-plugin-release` 第 5 节走浏览器；`gh release edit` 可用时不必去页面补发布说明。
+
+### Review branch 预览：没有的小节代表「无发现」，Pending 可以拖到 4 分钟
+
+**教训**：0.1.11 的预览结果只出现 `CSS LINT`（2 处已知 `!important` Warning）与 `DEPENDENCIES Pass`，
+没有 `SOURCE CODE` 小节，一度怀疑扫描没跑完；实际是「有发现才出小节」。同一轮 2.5 分钟时条目仍是
+`Pending`（正文带 "These results are incomplete"），第 4 分钟才转 `Completed`。
+
+**对策**：判据只看条目 group 的 `<Pending|Completed|Failed>` 与正文里的 Error 级条目；缺小节不是失败，
+Pending 期间不要提前下结论。轮询间隔 ≥60 秒，至少留 4 分钟。
+
 ## 依赖与构建
 
 ### 传递依赖的安全公告：用例先行，再 overrides
@@ -158,6 +177,66 @@ tsc、vitest、bot 复审全都看不见，只有真机悬停才现形。
 ③ 无法在真机取证时，用插件自己的渲染链路把同一份源码渲染出来做对照（`tests/browser/` 的验证页，
    或临时用 esbuild 打一个只 import `src/renderer.ts` 的最小入口），比继续在截图里猜配色快。
 灯箱本身的结论已落 [docs/obsidian-internals.md](obsidian-internals.md)「阅读视图的图片灯箱」一节。
+
+### 灯箱拦截只能挂在 `<img>` 上，否则会吃掉 mermaid 节点链接
+
+**教训**：0.1.11 前我们把 `preventDefault` 挂在卡片画布上拦 Obsidian 的图片灯箱；`imageify: false`
+时画布内是内联 SVG，mermaid 的 `click` 链接冒泡到画布被一并取消——而 `securityLevel: "loose"` 的理由里
+还写着「保留链接」，行为与文档直接矛盾。
+
+**对策**：拦截只登记在 `<img>` 自己身上（`imageify` 与 plain 两种形态），内联 SVG 不挂。验收时关掉
+「图片化渲染」，用 `click A "https://…"` 的节点实测导航，放大拖拽后再点一次。
+
+### 双击防误关要看「这一对按下」的最大位移
+
+**教训**：查看器把「拖拽松手后的连点」误判成双击关窗。原实现每次 `pointerdown` 都把 `dragDistance`
+清零，而 `dblclick` 在第二次按下之后才触发，读到的是 0 —— 阈值保护在它本该覆盖的场景里失效。
+
+**对策**：第二次按下时先把上一次按下的位移存进 `previousPressDistance`，判定取两者最大值；双指缩放
+开始时两者一起清零。不要为此写死双击间隔的毫秒数。
+
+### 卡片重建会把 document 监听一层层叠上去
+
+**教训**：工具条每次重建都 `registerDomEvent(document, "click", …)`，监听挂在块组件上、直到块卸载才
+释放；反复换主题或改设置后，一次点击会跑 N 份「关菜单」。
+
+**对策**：「点外面关闭」在 `onload()` 里只登记一次，重建时只换 `menuEl` 引用；菜单互斥开放在插件级
+维护（`claimMenu` / `releaseMenu`），顺带解决两张卡片菜单同时开着的问题。
+
+## 渲染刷新与并发边界
+
+### 设置变更不会产生编辑器事件，实时预览必须显式重扫
+
+**教训**：实时预览的重扫只挂在 `docChanged` / `viewportChanged`、`view.dom` 的 `MutationObserver` 与
+`docViewUpdate` 上。设置面板改「启用 Clean Mermaid 渲染」三者都不命中：关闭时扫描会把卡片卸载并从
+`plugin.blocks` 清空，重新开启后没有已登记块可刷，于是图停在官方样式，直到滚动才恢复。
+
+**对策**：编辑器实例在构造时把重扫函数登记到插件（`registerLivePreviewRescan`），`destroy()` 注销；
+`updateSettings()` 只在开关**真的变化**时统一通知。阅读视图仍走 `refreshAll()`，两条路分开。
+
+### 刷新短路分支不能无条件重新适配
+
+**教训**：`refresh()` 的「签名没变」分支曾无条件 `applyFit()`，而设置面板每个控件都会刷新全部卡片——
+改 PNG 倍率、语言、工具条显隐都会把用户的手动缩放和拖拽位置清掉。语言因为在签名里还会走整卡重建，
+重建后又 `applyFit()`，同样丢视角。
+
+**对策**：把「几何签名」「适配输入」「纯界面/导出项」分开记录（ADR 0004）。短路分支只在适配输入变化时
+重新适配；整卡重建时按旧尺寸恢复 `{zoom, tx, ty}`。新增设置项时先想清楚它属于哪一类。
+
+### 形状门控的模块变量必须与 `render` 同处串行区
+
+**教训**：`decisionShapeSetting` 在 `await mermaid.render()` 之前赋值，并发请求会互相覆盖：先发的请求
+可能读到后发的形状，却以旧键入缓存，之后命中该键的图显示错误的菱形。
+
+**对策**：渲染统一进 `createSerialQueue()`，赋值与 `render` 放同一段（ADR 0005）；缓存键在入队前算好。
+别用「单次清缓存」或「跳过写入」糊过去——已经返回的错误 SVG 不会被纠正。
+
+### 渲染失败要把观察器和节点引用一起交还
+
+**教训**：`showError()` 曾只清空 `cardEl/canvasEl/mediaEl`，`ResizeObserver` 仍在观察已经脱离文档的
+节点，缩放徽标引用也留着，直到块卸载才释放。
+
+**对策**：失败分支里 `disconnect()`、置空观察器与徽标/菜单引用，并释放插件级的菜单占用。
 
 ## 改第三方打包内部（mermaid 形状表）
 
@@ -312,6 +391,33 @@ SVG 哈希的断言。验证页是临时产物，比对完即删，不入库。
 交付前用 `node --env-file=<文件> -e "…"` 逐键断言非空（Node ≥ 20.6）——本次靠这一步当场抓到
 `OS` 被吞。
 
+### 用户手改 Markdown 常被编辑器整份重排，先备份再按 HEAD 重建
+
+**教训**：用户手改 `README.zh-CN.md` 后，保存触发的格式化把整份文件重排：语言徽章的可点击链接被拆、
+四反引号嵌套围栏被改成三反引号（内层 mermaid 围栏提前闭合）、表格里的 `\|` 转义被删（单元格拆列）、
+列表续行缩进与文末换行也丢了。把差异直接当成「内容改动」提交，会把原文格式一起毁掉。
+
+**对策**：先把用户版本备份到 `.agents/plan/`，`git checkout -- <file>` 回到 HEAD，只把内容改动重新
+应用进去；然后核对徽章链接、围栏层数、表格转义与文末换行四项。
+
+### 「发布完成」以目录条目回到 `Completed` 为准
+
+**教训**：0.1.11 发布后点了「Check for new releases」，条目先 `Pending`（正文带 "These results are
+incomplete"）约 4 分钟才转 `Completed`；只看到「Checking for releases…」或 `Pending` 就收工，
+等于没确认社区目录已经重扫。
+
+**对策**：按 `obsidian-plugin-release` 第 6 节轮询到 `Completed` 再结束；期间只保留一条已知 Warning
+（main.js > 5 MB）。`Failed` 会让插件在市场搜不到，必须继续处理。
+
+### 共用标签下的浏览器自动化要先 `cooperate sync`
+
+**教训**：用 bsk 在用户已登录的 Chrome 里操作社区站点时，直接 `fill` / `click` 会报
+`shared page control or observation changed`：严格策略下每个动作都要带上一次 `cooperate sync` 返回的
+`--context` 与**顶层** `observation_id`，而且每次动作前都要重新 sync；第一次 sync 时 refs 可能整体换号。
+
+**对策**：先 `cooperate sync --json` 取 `context_id` + `observation_id`，再执行单个动作；连续动作之间
+重新 sync、重新 `observe` 取 refs。不要在同一份 observation 上连发多个动作。
+
 ## 既有结论索引（引用，不在这里重复维护）
 
 - 动渲染接管路径、`docViewUpdate` 时序、`look: "classic"`、判断节点恒为正方形的 `question` 算法、
@@ -324,5 +430,6 @@ SVG 哈希的断言。验证页是临时产物，比对完即删，不入库。
 - 术语口径（卡片 / 代码块 / 画布 / 展开查看 / plain 块 / 教学提示，含「不要用哪个词」）→
   [GLOSSARY.md](../GLOSSARY.md)
 - 双击手势归属、教学提示为何不进设置 → [docs/adr/](adr/)
+- 设置刷新如何保留手动视角、渲染为何串行化 → ADR 0004 / 0005
 - 对比图文案的 mermaid 文法三条约束（状态名 / ER 关系标签 / 时序图 `as`）与逐条词法依据 →
   `tests/browser/capture-diagrams.ts` 文件头注释

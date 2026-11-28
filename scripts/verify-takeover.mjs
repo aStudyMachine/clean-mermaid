@@ -10,40 +10,45 @@ import { openAsar, parseFlags } from "./obsidian-asar.mjs";
 
 const USAGE = "node scripts/verify-takeover.mjs [\"<obsidian.asar>\"] [--allow-stale]";
 
-/** [说明, 断言用到的稳定片段（必须是 asar 里的原样字节，别写会被 minify 改掉的写法）] */
-const CHECKS = [
+/** [说明, 稳定片段或允许压缩器变量换名的正则] */
+const SHARED_CHECKS = [
 	// —— 阅读视图接管
 	["阅读视图：官方按 code.language-mermaid 扫描", ['findAll("code.language-mermaid")']],
-	["代码块处理器把 <pre> 换成 div.block-language-<lang>", ['createDiv("block-language-"+e)']],
+	["代码块处理器把 <pre> 换成 div.block-language-<lang>", [/createDiv\("block-language-"\+\w+\)/]],
 	["同语言重复注册抛异常（main.ts 保留 try/catch 的依据）", ["Code block postprocessor for language "]],
-	["sortOrder 生效：postProcessors 升序排序（-100 因此排在官方之前）", ["(e.sortOrder||0)-(t.sortOrder||0)"]],
+	["sortOrder 生效：postProcessors 升序排序（-100 因此排在官方之前）", [/\.sort\(\((\w+),(\w+)\)=>\(\1\.sortOrder\|\|0\)-\(\2\.sortOrder\|\|0\)\)/]],
 	// —— 实时预览接管
-	["部件类名由 cm-lang-<lang> 拼出（WIDGET_SELECTOR 仍匹配）", ['markdown-rendered cm-lang-"+a)']],
-	["mermaid 在部件里被硬编码直调，注册表查不到", ['"mermaid"===a']],
-	["canRenderLang 对 mermaid 恒真", ['"mermaid"===e||"query"===e']],
+	["部件类名由 cm-lang-<lang> 拼出（WIDGET_SELECTOR 仍匹配）", [/markdown-rendered cm-lang-"\+\w+\)/]],
+	["mermaid 在部件里被硬编码直调，注册表查不到", [/createEl\("code","language-"\+(\w+)\).{0,80}(?:"mermaid"===\1|\1==="mermaid")/]],
+	["canRenderLang 对 mermaid 恒真", [/canRenderLang\((\w+)\)\{return (?:"mermaid"===\1|\1==="mermaid")\|\|(?:"query"===\1|\1==="query")/]],
 	["官方输出容器是 div.mermaid", ['createDiv("mermaid")']],
 	["悬浮操作条 .embed-actions", ["embed-actions"]],
-	// —— 镜像信任门
-	["信任键 mermaid-vault-trust", ['"mermaid-vault-trust"']],
-	["未信任守卫 mermaid-wrapper is-guarded", ['createDiv("mermaid-wrapper is-guarded")']],
 	// —— 同帧接管
 	["CodeMirror measure() 调 docViewUpdate", ["this.docViewUpdate()"]],
-	["docViewUpdate 派发到 view 插件上同名方法", ["n.docViewUpdate"]],
+	["docViewUpdate 派发到 view 插件上同名方法", [/docViewUpdate\(\)\{.{0,140}\b\w+\.docViewUpdate\(this\)/]],
 	// —— 样式竞争（styles.css 里提特异性的依据）
 	["阅读视图 img 规则 .markdown-rendered img", [".markdown-rendered img"]],
 	["实时预览 img 规则 .markdown-source-view.mod-cm6 img", [".markdown-source-view.mod-cm6 img"]],
 	// —— 主题 / 模态框
 	["深色类挂在 body 上", ["body.theme-dark"]],
-	["modal 背景取 --modal-background", ["background-color: var(--modal-background)"]],
+	["modal 背景取 --modal-background", [/background-color:\s*var\(--modal-background\)/]],
 	["遮罩色 --background-modifier-cover", ["--background-modifier-cover:"]],
 	// —— 阅读视图的图片灯箱（imageify / plain 的 <img> 会被它劫走）
 	["灯箱黑底 --lightbox-background", ["--lightbox-background: black"]],
 	["灯箱容器 lightbox-bg", ['createDiv("lightbox-bg")']],
 	["灯箱让路口 defaultPrevented", ["defaultPrevented"]],
-	["灯箱委托选择器 img,video", ['t.on("click","img,video",s)']],
-	// —— 运行时
-	["内置 mermaid 11.13.0", ["mermaid@11.13.0"]],
-	["分发 lib/pele.min.js（Pele 迁移的启动信号）", ["pele.min.js"]],
+	["灯箱委托选择器 img,video", [/\.on\("click","img,video",(\w+)\),\w+\.on\("contextmenu","img,video",\1\)/]],
+];
+
+const LEGACY_CHECKS = [
+	["信任键 mermaid-vault-trust", ['"mermaid-vault-trust"']],
+	["未信任守卫 mermaid-wrapper is-guarded", ['createDiv("mermaid-wrapper is-guarded")']],
+	["内置 Mermaid 11.13.0", ["mermaid@11.13.0"]],
+];
+
+const PELE_CHECKS = [
+	["官方渲染器加载 lib/pele.min.js", ['("/lib/pele.min.js")']],
+	["不再读取旧信任键或渲染未信任守卫", ['"mermaid-vault-trust"', 'createDiv("mermaid-wrapper is-guarded")'], 0],
 ];
 
 const { allowStale, positional } = parseFlags(process.argv.slice(2));
@@ -54,10 +59,18 @@ const text = buffer.toString("latin1");
 console.log(`asar: ${asarPath}`);
 console.log(`Obsidian 版本: ${version} | bytes: ${buffer.length}\n`);
 
+if (version === "未知") {
+	console.error("无法识别 Obsidian 版本，不能确定宿主的 Mermaid 渲染路径。");
+	process.exit(1);
+}
+const [major, minor] = version.split(".").map(Number);
+const usesPele = major > 1 || (major === 1 && minor >= 15);
+const checks = [...SHARED_CHECKS, ...(usesPele ? PELE_CHECKS : LEGACY_CHECKS)];
+
 let failed = 0;
-for (const [name, needles] of CHECKS) {
+for (const [name, needles, exactCount] of checks) {
 	const counts = needles.map((needle) => text.split(needle).length - 1);
-	const ok = counts.every((count) => count > 0);
+	const ok = counts.every((count) => exactCount === undefined ? count > 0 : count === exactCount);
 	if (!ok) {
 		failed++;
 	}
@@ -66,7 +79,7 @@ for (const [name, needles] of CHECKS) {
 
 console.log(
 	failed === 0
-		? `\n全部通过（${CHECKS.length} 项）：docs/obsidian-internals.md 的结论在本版本上仍成立。`
+		? `\n全部通过（${checks.length} 项）：接着按 CONTRIBUTING.md 在干净库实测接管。`
 		: `\n失败 ${failed} 项：先按 docs/obsidian-internals.md 重新检索这些片段，再决定怎么改接管。`,
 );
 process.exitCode = failed === 0 ? 0 : 1;

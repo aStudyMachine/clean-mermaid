@@ -131,7 +131,7 @@ GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间�
 3. **对含改动的 commit 跑 `Review branch` 预览扫描**：`https://community.obsidian.md/account/plugins/<plugin-id>/review-branch`，输入框填 branch / tag / 完整 SHA（留空 = 默认分支），点 `Run preview scan`，等条目从 `Pending` 变 `Completed`，**正文里没有 Error 级才继续**。预览覆盖代码侧（Source code / CSS lint / Behavior / Dependencies），**但不含 `Releases` 与 `Build verification` 两节**（它没有 release 资产可比），所以产物侧结论仍要靠第 6 步的三方哈希。
    - 点完会**跳到插件详情页** `community.obsidian.md/account/plugins/<plugin-id>`，结果不在 review-branch 表单页看。
    - 该页是服务端渲染快照，**条目状态不会自己更新**：判定前先重新导航一次，否则一直读到 `Pending` 会误判「扫描卡住」。判定方式是读条目的 group 文本 `Date : … Version／Ref : X Commit : <Pending|Completed|Failed>`，轮询间隔 ≥60 秒。
-   - 实测耗时：预览约 **3 分钟**（正式 release 复审 1–2 分钟）。`Pending` 期间会先出 `CSS lint` / `Behavior`，`Source code` 与 `Dependencies` 后到 —— 此时缺项**不代表失败**，别急着下结论。
+   - 实测耗时：预览约 3 分钟，2026-11-23 一轮在 2.5 分钟仍 `Pending`、第 4 分钟才转 `Completed`（正式 release 复审 1–2 分钟）。`Pending` 期间只先出部分小节 —— 此时缺项**不代表失败**；反过来，`Completed` 结果里**没有出现的小节代表该组无发现**（本次只有 CSS LINT 与 DEPENDENCIES，没有 SOURCE CODE 就是干净的），不要当成扫描没跑完。
 4. 合到默认分支并推送 —— **这一步同时让 workflow 变得可触发**。
 5. 触发 **dry-run**（不勾 `publish`），等它成功。
    - **「Workflow dispatch failed / Workflow could not be run」不等于配置有错**：实测头两次浏览器提交被 GitHub 拒，第三次原样重试即成功。先重试（2–3 次）再怀疑权限或 workflow 文件；重试前用 `gh workflow list` 确认 workflow 仍是 `active`。
@@ -146,6 +146,10 @@ GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间�
 ## 4. gh 的实测坑
 
 每条都真实发生过，按字面抄命令会踩：
+
+- **Actions 写权限会变，先试 CLI**：2026-11-23 实测 `gh workflow run` 与 `gh release edit --notes-file`
+  都能直接使用；此前一轮的 403 是当时凭据缺 Actions 写。发版时先跑一次 `gh workflow run`（失败无副作用），
+  真的 403 再按第 5 节走浏览器，别把浏览器当成固定路径。
 
 - **`gh release view --json` 没有 `isLatest` 字段**。可用字段（实测列表）：`apiUrl assets author body createdAt databaseId id isDraft isImmutable isPrerelease name publishedAt tagName tarballUrl targetCommitish uploadUrl url zipballUrl`。要判断「最新」就用 `isDraft`/`isPrerelease` + `publishedAt`，或 `gh release list` 的首行。
 - **`gh attestation verify` 的 `--owner` 与 `--repo` 互斥**：同时给会报 `if any flags in the group [owner repo] are set none of the others can be`。只给 `--owner <owner>`。
@@ -164,6 +168,10 @@ GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间�
 
 ## 5. 403 之后：用浏览器触发 workflow
 
+共用标签（bsk 系浏览器自动化）在严格策略下每个动作都要先 `cooperate sync`，再带返回的 `--context`
+与**顶层** `observation_id`；直接 `fill` / `click` 会报 `shared page control or observation changed`。
+每次动作前重新 sync，refs 可能整体换号。
+
 打开 `https://github.com/<owner>/<repo>/actions/workflows/<workflow-file>` 后：
 
 1. **「Run workflow」按钮是个 `<summary>` 折叠控件，可访问性树里不暴露**。先枚举 DOM 找它（实测文本形如 `Run workflow <summary class=primary btn-sm btn>`），用脚本 `click()` 并确认父 `<details>` 的 `open === true`。
@@ -175,6 +183,7 @@ GitHub Release 说明固定**英文在前、中文在后**，各用 H2，中间�
 ## 6. 发完之后：让社区目录重扫
 
 - 回到 `https://community.obsidian.md/account/plugins/<plugin-id>`，点 **「Check for new releases」**。**不点就不会重扫** —— 发 GitHub Release 本身不会通知目录。
+  0.1.11 实测从点击到 `Completed` 约 4–5 分钟（中间 2.5 分钟仍是 `Pending`），别在这个窗口里反复重载下结论。
 - **发版完成的定义是「该 version 的条目回到 `Completed`」，不是「点了重扫」**。留在 `Failed` 就意味着插件在社区搜索里搜不到，而除账号页顶部那行横幅外没有任何告警。条目会先 `Pending`（正文带 "These results are incomplete. More checks are still running."），实测一到两分钟内转 `Completed`。
 - **同版本号重发是死路**：release 复审结论按 `version` 缓存，即使删掉 release 与 tag、用 CI 重建并把 tag 换到新 commit，条目回来时仍带着修复前的行号与旧结论。要重算**必须抬版本号**。
 - 页面只 hydrate 出导航栏时（反复重载也白等），改用同源取载荷：在页面里 `fetch('/account/plugins/<plugin-id>')` → `DOMParser().parseFromString(html,'text/html')` → 读 `details summary` 与 `details` 正文。该站是 Next.js RSC，数据在 flight 载荷里，**没有可直取的 JSON 接口**。

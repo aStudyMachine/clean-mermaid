@@ -162,7 +162,8 @@ function ensureInitialized(): void {
 	installCompactDecisionShape();
 	mermaid.initialize({
 		startOnLoad: false,
-		securityLevel: "loose",
+		// Pele 移除了宿主的信任提示，插件自带的 Mermaid 仍需要净化输出。
+		securityLevel: "strict",
 		suppressErrorRendering: true,
 		logLevel: "fatal",
 		theme: "base",
