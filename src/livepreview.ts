@@ -1,4 +1,5 @@
 import { EditorView, PluginValue, ViewPlugin, ViewUpdate } from "@codemirror/view";
+import { requireApiVersion } from "obsidian";
 import type CleanMermaidPlugin from "./main";
 import { CleanMermaidBlock } from "./block";
 
@@ -29,6 +30,9 @@ interface ManagedEntry {
 }
 
 export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
+	// Obsidian 1.15 的 Pele 不再写入旧版 Mermaid 信任键。
+	const usesLegacyMermaidTrust = !requireApiVersion("1.15.0");
+
 	return ViewPlugin.fromClass(
 		class implements PluginValue {
 			private readonly managed = new Map<HTMLElement, ManagedEntry>();
@@ -101,15 +105,12 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 			}
 
 			private ensureCard(widget: HTMLElement): void {
-				// Obsidian 渲染 mermaid 图之前会先让用户信任该 vault
-				// （local storage 里的 `mermaid-vault-trust`）。这道闸门保持原样：两种形态下
-				// 都不要绕过它去渲染。
-				if (!this.isVaultTrusted() || widget.querySelector(".mermaid-wrapper.is-guarded")) {
-					this.releaseWidget(widget);
-					return;
-				}
-
-				if (!plugin.settings.enableRendering) {
+				// 保留宿主实际显示的信任提示。旧版提示出现前，也要等信任键写入才接管。
+				if (
+					!plugin.settings.enableRendering ||
+					widget.querySelector(".mermaid-wrapper.is-guarded") ||
+					(usesLegacyMermaidTrust && !this.isVaultTrusted())
+				) {
 					this.releaseWidget(widget);
 					return;
 				}
@@ -143,7 +144,7 @@ export function createLivePreviewExtension(plugin: CleanMermaidPlugin) {
 				try {
 					return plugin.app.loadLocalStorage("mermaid-vault-trust") === true;
 				} catch {
-					return true;
+					return false;
 				}
 			}
 

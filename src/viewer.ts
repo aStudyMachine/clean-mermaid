@@ -100,6 +100,7 @@ export class DiagramViewerModal extends Modal {
 		const media = stage.createEl("img", { cls: "cm-modal-media" });
 		media.src = svgToDataUrl(this.data.rendered.svg);
 		media.draggable = false;
+		this.plugin.suppressImagePreview(media);
 		this.mediaEl = media;
 
 		// 默认窗口＝视口上限；图像随后由 fit() 缩放到刚好装进窗口。

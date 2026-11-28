@@ -20,13 +20,18 @@ export function svgToDataUrl(svg: string): string {
  * ③ 剥掉 `max-width` —— 那是「随容器缩」的语义，与本插件自己算 `computeFit` 缩放的做法冲突，
  * 留着会让 `<img>` 先被压一次、我们再缩一次。
  *
- * 解析失败（不是 `<svg>`）时原样返回、尺寸记 0，由调用方决定怎么降级。
+ * Mermaid 净化 SVG 时可能把标签内的 HTML 空元素序列化成 `<br>`，先按 HTML 解析
+ * 以便 XMLSerializer 补齐闭合。拿不到 SVG 根节点时原样返回，尺寸记 0。
  */
 export function normalizeSvg(svg: string): RenderedDiagram {
-	const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
-	const el = doc.documentElement;
-	if (!el || el.nodeName.toLowerCase() !== "svg") {
-		return { svg, width: 0, height: 0 };
+	const parser = new DOMParser();
+	let el: Element = parser.parseFromString(svg, "image/svg+xml").documentElement;
+	if (el.localName !== "svg") {
+		const root = parser.parseFromString(svg, "text/html").body.firstElementChild;
+		if (root?.localName !== "svg") {
+			return { svg, width: 0, height: 0 };
+		}
+		el = root;
 	}
 
 	let width = 0;

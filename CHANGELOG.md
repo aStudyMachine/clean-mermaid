@@ -4,6 +4,21 @@
 格式参考 Keep a Changelog，版本号遵循语义化版本；最新条目在最上面。
 中英双语发布说明见 GitHub Release。
 
+## [0.1.12] - 待发布
+
+### 变更
+
+- Mermaid 的 `click` 节点仍支持 HTTPS 链接。渲染时会过滤 `obsidian://` 等自定义协议链接。
+
+### 修复
+
+- Obsidian 1.15 及以上版本中，新建知识库的实时预览会显示 Clean Mermaid 卡片，并应用 ELK 等布局设置。
+- 同时启用 Obsidian Image Toolkit 时，悬浮在 Clean Mermaid 图表上不再出现图库的放大镜光标，单击也不会弹出透明背景的图片预览。
+
+### 兼容性
+
+- 需要桌面版 Obsidian 1.14.4 及以上。内置 Mermaid 为 12.1.0。
+
 ## [0.1.11] - 2026-11-23
 
 ### 修复

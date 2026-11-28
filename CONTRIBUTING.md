@@ -124,6 +124,11 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
    scrolling or editing needed.
 3. ELK is active: a complex flowchart differs from `%% cm:layout=dagre %%`; the ELK settings
    (`mergeEdges`, `nodePlacementStrategy`) change the output.
+   After an Obsidian upgrade and before a plugin release, run `npm run verify:takeover` against
+   the running Obsidian build. Repeat checks 1–3 in a new test vault without migrated settings.
+   On Obsidian 1.15+, confirm that `app.loadLocalStorage("mermaid-vault-trust")` is empty and that
+   Live Preview still shows the card with ELK. Where a 1.14.x test install is available, also check
+   that Live Preview leaves the native trust prompt visible until you allow rendering.
 4. Switching the Obsidian appearance re-renders diagrams with the matching theme — including
    `%% cm:plain %%` diagrams and ones under a fixed (non-following) theme.
 5. Resizing the pane re-fits the diagram and keeps it centred; a very narrow pane does not overflow.
@@ -132,10 +137,12 @@ PR). Then run this in a vault with `main.js`, `manifest.json` and `styles.css` d
 6. `Ctrl/Cmd + scroll` zooms around the pointer; plain scroll still scrolls the note; drag pans.
    **Double-clicking a diagram opens it expanded**, and only a double-click on the canvas counts
    (clicking toolbar buttons must not open the viewer); switching *Interaction → Double-click action*
-   to *Reset zoom* or *Do nothing* changes the gesture without a reload. **A single click (or a
-   right-click) on the diagram does nothing** — in particular it must not open Obsidian's built-in
-   image lightbox (black, 90 % opaque, showing nothing but our background-less SVG); with the plugin
-   off, clicking the built-in rendering does nothing either, so the two must match.
+   to *Reset zoom* or *Do nothing* changes the gesture without a reload. In Reading view and Live
+   Preview, verify that single-click and right-click on a diagram image never open the built-in
+   image lightbox. With Obsidian Image Toolkit enabled, hover over and single-click a card image,
+   a plain image, and an image inside the expanded viewer. Check that the gallery zoom cursor and
+   preview stay off the diagrams and still work on ordinary note images. Clicking a diagram image
+   also closes any open card menu.
 7. `⤢` (hover the card's top-right corner) and a double-click open the same expanded viewer, filling
    the viewport, with the diagram scaled to fit that window
    (small diagrams get enlarged rather than pinned to 100 %). The adaptive-fit button shows both

@@ -100,15 +100,33 @@ export default class CleanMermaidPlugin extends Plugin {
 	/** 打开一张卡片的菜单前先关掉上一张，避免同时开着两个。 */
 	claimMenu(closer: () => void): void {
 		if (this.openMenuCloser && this.openMenuCloser !== closer) {
-			this.openMenuCloser();
+			this.closeOpenMenu();
 		}
 		this.openMenuCloser = closer;
+	}
+
+	private closeOpenMenu(): void {
+		this.openMenuCloser?.();
 	}
 
 	releaseMenu(closer: () => void): void {
 		if (this.openMenuCloser === closer) {
 			this.openMenuCloser = null;
 		}
+	}
+
+	/** 隔离插件生成的图表图片与宿主或第三方图库的委托监听。 */
+	suppressImagePreview(image: HTMLImageElement): void {
+		image.addEventListener("click", (event) => {
+			// Obsidian 检查 defaultPrevented，Image Toolkit 的委托监听则依赖事件冒泡。
+			event.preventDefault();
+			event.stopPropagation();
+			// 单击不再冒泡到 document，仍需关闭卡片菜单。
+			this.closeOpenMenu();
+		});
+		// Image Toolkit 也在 document 上委托悬浮事件，直接把光标设为 zoom-in。
+		image.addEventListener("mouseover", (event) => event.stopPropagation());
+		image.addEventListener("mouseout", (event) => event.stopPropagation());
 	}
 
 	isDark(): boolean {

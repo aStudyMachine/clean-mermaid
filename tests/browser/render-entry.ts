@@ -252,8 +252,33 @@ async function main(): Promise<void> {
 		results.push({ check: "katex math", error: error instanceof Error ? error.message : String(error) });
 	}
 
-	// SVG 净化：安全级别为 loose，标签里的 HTML 必须经 mermaid 的 DOMPurify 过滤。
-	// 升级带净化的传递依赖前后都跑这条 —— 带事件处理器的负载不能以可执行属性落进输出。
+	// strict 模式保留 HTTPS 节点链接和 HTML 换行，并过滤自定义协议。
+	for (const layout of ["elk", "dagre"] as const) {
+		const link = "https://example.com/";
+		const customLink = "obsidian://open?file=Example";
+		const diagram = await renderDiagram({
+			code: `flowchart TD\n  A["第一行<br/>第二行"] --> B[结果]\n  click A "${link}"\n  click B "${customLink}"`,
+			theme: BUILTIN_THEMES[0],
+			layout,
+			elkMergeEdges: "default",
+			elkNodePlacement: "default",
+			decisionShape: "compact",
+			plain: false,
+		});
+		const svg = new DOMParser().parseFromString(diagram.svg, "image/svg+xml");
+		const links = Array.from(svg.querySelectorAll("a"),
+			(anchor) => anchor.getAttribute("href") ?? anchor.getAttribute("xlink:href"),
+		);
+		const hasLink = links.includes(link);
+		const hasCustomLink = links.some((href) => href?.startsWith("obsidian:"));
+		const hasLineBreak = svg.querySelector("foreignObject br") !== null;
+		results.push({ check: "strict diagram links and line breaks", layout, hasLink, hasCustomLink, hasLineBreak });
+		if (!hasLink || hasCustomLink || !hasLineBreak) {
+			throw new Error(`strict 模式的节点链接或标签换行不符合预期（${layout}）`);
+		}
+	}
+
+	// strict 下标签与最终 SVG 都经过净化。
 	try {
 		const payload = await renderDiagram({
 			code: 'flowchart TD\n  A["<img src=x onerror=window.__cmXss=1>"] --> B[ok]',
@@ -268,15 +293,21 @@ async function main(): Promise<void> {
 		holder.innerHTML = payload.svg;
 		document.body.appendChild(holder);
 		await new Promise((resolve) => setTimeout(resolve, 200));
+		const executableAttributeKept = holder.querySelector("[onerror]") !== null;
+		const xssExecuted = (window as unknown as Record<string, unknown>).__cmXss === 1;
 		results.push({
 			check: "svg sanitization",
 			payloadInOutput: /onerror/i.test(payload.svg),
-			executableAttributeKept: holder.querySelector("[onerror]") !== null,
-			xssExecuted: (window as unknown as Record<string, unknown>).__cmXss === 1,
+			executableAttributeKept,
+			xssExecuted,
 		});
 		holder.remove();
+		if (executableAttributeKept || xssExecuted) {
+			throw new Error("SVG 净化失败");
+		}
 	} catch (error) {
 		results.push({ check: "svg sanitization", error: error instanceof Error ? error.message : String(error) });
+		throw error;
 	}
 }
 
