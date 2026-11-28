@@ -2,10 +2,10 @@
 
 滚动删除：完成一项即删一行，不留历史。
 
-1. [ ] **复审长期「不修」项**（0.1.11 复审 Completed、无 Error，只剩下面三条；理由只记在这里，
-   别写进 `CHANGELOG.md` 或 Release 说明）：
-   - main.js 超 5 MiB（0.1.11 为 5,373,857 B ≈ 5.12 MiB）：自带 mermaid 12 运行时的必然结果，要压进去只能裁
-     图表类型、代价是失去与原生渲染的一致性；
+1. [ ] **复审长期「不修」项**（0.1.12 复审 Completed、无 Error，Build verification、两项产物签名和
+   依赖检查均通过；理由只记在这里，别写进 `CHANGELOG.md` 或 Release 说明）：
+   - `main.js` 为 5,374,258 字节，超过 Obsidian Sync Standard 的单文件同步上限。插件保留完整的
+     Mermaid 图表类型，因为裁剪会缩小与原生渲染的兼容范围。
    - `styles.css` 仅剩 2 处 `!important`（`.cm-core-hidden` 与 live-guard 守卫规则）：对抗官方异步追加、
      可能带内联样式的输出，摘掉会官方图与卡片同显；
    - 剪贴板访问：就是「复制为 PNG / SVG」功能本身。
