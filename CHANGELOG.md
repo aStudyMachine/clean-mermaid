@@ -8,16 +8,16 @@
 
 ### 变更
 
-- Mermaid 的 `click` 节点仍支持 HTTPS 链接。渲染时会过滤 `obsidian://` 等自定义协议链接。
+- 图表里的网页链接可以照常打开。通过 Obsidian 专用链接从图表跳转到笔记的功能已停用。
 
 ### 修复
 
-- Obsidian 1.15 及以上版本中，新建知识库的实时预览会显示 Clean Mermaid 卡片，并应用 ELK 等布局设置。
-- 同时启用 Obsidian Image Toolkit 时，悬浮在 Clean Mermaid 图表上不再出现图库的放大镜光标，单击也不会弹出透明背景的图片预览。
+- 在 Obsidian 1.15 或更新版本中，新建知识库后，「实时预览」会按你选的布局显示 Clean Mermaid 图表。
+- 同时使用 Obsidian Image Toolkit 时，鼠标移到图表上不会再出现放大镜，单击图表也不会误打开图片预览。
 
 ### 兼容性
 
-- 需要桌面版 Obsidian 1.14.4 及以上。内置 Mermaid 为 12.1.0。
+- 需要桌面版 Obsidian 1.14.4 或更新版本。
 
 ## [0.1.11] - 2026-11-23
 
